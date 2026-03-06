@@ -35,6 +35,7 @@ class TouchpadScreen extends ConsumerWidget {
               clipBehavior: Clip.antiAlias,
               child: TouchPadArea(
                 sensitivity: settings.sensitivity,
+                scrollSensitivity: settings.scrollSensitivity,  // 添加滚动灵敏度
                 tapToClick: settings.tapToClick,
                 naturalScroll: settings.naturalScroll,
                 inertia: settings.inertia,

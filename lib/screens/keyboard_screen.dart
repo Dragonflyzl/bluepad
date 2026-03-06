@@ -27,10 +27,11 @@ class _KeyboardScreenState extends ConsumerState<KeyboardScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+    final settingsNotifier = ref.read(settingsProvider.notifier);
     final actions = ref.read(bluetoothActionsProvider);
-    final connectedDevice = ref.watch(connectedDeviceProvider);
-    final osType = getDeviceInfo(connectedDevice?.name ?? "")["os"];
-    final isMac = osType == "macOS";
+
+    // 使用 settings.osType 替代设备名称判断
+    final isMac = settings.osType == "macOS";
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -55,6 +56,7 @@ class _KeyboardScreenState extends ConsumerState<KeyboardScreen> {
                   ),
                   child: TouchPadArea(
                     sensitivity: settings.sensitivity,
+                    scrollSensitivity: settings.scrollSensitivity,  // 添加滚动灵敏度
                     tapToClick: settings.tapToClick,
                     naturalScroll: settings.naturalScroll,
                     inertia: settings.inertia,
@@ -119,6 +121,12 @@ class _KeyboardScreenState extends ConsumerState<KeyboardScreen> {
                     // 对应 Android switchInputMethod: 发送 Ctrl+Space
                     actions.sendKeyPress(0x01, [0x2C]);
                   },
+                ),
+                const SizedBox(width: 4),
+                // OS 切换按钮
+                _OsToggleBtn(
+                  isMac: isMac,
+                  onTap: () => settingsNotifier.setOsType(isMac ? "Windows" : "macOS"),
                 ),
               ],
             ),
@@ -266,6 +274,53 @@ class _ModifierLockBtn extends StatelessWidget {
           Icons.push_pin,
           size: 14,
           color: isLocked ? Colors.white : (isDark ? DarkColors.text2.withOpacity(0.5) : LightColors.text2.withOpacity(0.5)),
+        ),
+      ),
+    );
+  }
+}
+
+class _OsToggleBtn extends StatelessWidget {
+  final bool isMac;
+  final VoidCallback onTap;
+
+  const _OsToggleBtn({required this.isMac, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = isDark ? DarkColors.accent : LightColors.primary;
+    final bgColor = isDark ? DarkColors.bg3 : LightColors.bg3;
+    final borderColor = isDark ? DarkColors.border : LightColors.border;
+    final textColor = isDark ? DarkColors.text2 : LightColors.text2;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isMac ? Icons.apple : Icons.computer,
+              size: 14,
+              color: isMac ? accentColor : textColor,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              isMac ? 'Mac' : 'Win',
+              style: TextStyle(
+                color: isMac ? accentColor : textColor,
+                fontSize: 10,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -523,25 +578,39 @@ class _SymbolLayout extends StatelessWidget {
   final BluetoothActions actions;
   const _SymbolLayout({required this.actions});
 
+  // 完整符号集，每行 8 个
+  static const _row1 = ["!", "@", "#", "\$", "%", "^", "&", "*"];
+  static const _row2 = ["(", ")", "-", "_", "+", "=", "{", "}"];
+  static const _row3 = ["[", "]", "\\", "|", ";", ":", "'", "\""];
+  static const _row4 = ["<", ">", ",", ".", "/", "?", "`", "~"];
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildRow(["!", "@", "#", "\$"]),
+        _buildRow(_row1),
         const SizedBox(height: 4),
-        _buildRow(["%", "^", "&", "*"]),
+        _buildRow(_row2),
         const SizedBox(height: 4),
-        _buildRow(["(", ")", "-", "_"]),
+        _buildRow(_row3),
         const SizedBox(height: 4),
-        _buildRow(["+", "=", "{", "}"]),
+        _buildRow(_row4),
       ],
     );
   }
 
   Widget _buildRow(List<String> chars) {
     return Row(
-      children: chars.map((c) => _Key(label: c, onTap: () => actions.typeString(c))).toList()
-        .expand((w) => [w, const SizedBox(width: 4)]).toList()..removeLast(),
+      children: chars.map((c) => Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: _Key(
+            label: c,
+            onTap: () => actions.typeString(c),
+            flex: 1.0,
+          ),
+        ),
+      )).toList(),
     );
   }
 }
@@ -575,9 +644,35 @@ class _NavLayout extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        // 顶部行: Ins, Home, PgUp
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            SizedBox(width: 64, child: _Key(label: 'Ins', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x49]))),
+            const SizedBox(width: 4),
+            SizedBox(width: 64, child: _Key(label: 'Home', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x4A]))),
+            const SizedBox(width: 4),
+            SizedBox(width: 64, child: _Key(label: 'PgUp', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x4B]))),
+          ],
+        ),
+        const SizedBox(height: 4),
+        // 中间行: Del, End, PgDn
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(width: 64, child: _Key(label: 'Del', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x4C]))),
+            const SizedBox(width: 4),
+            SizedBox(width: 64, child: _Key(label: 'End', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x4D]))),
+            const SizedBox(width: 4),
+            SizedBox(width: 64, child: _Key(label: 'PgDn', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x4E]))),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // 方向键区域
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(width: 68),
             SizedBox(width: 60, child: _Key(label: '↑', onTap: () => actions.sendKeyPress(modifiers, [0x52]))),
           ],
         ),
@@ -590,15 +685,6 @@ class _NavLayout extends StatelessWidget {
             SizedBox(width: 60, child: _Key(label: '↓', onTap: () => actions.sendKeyPress(modifiers, [0x51]))),
             const SizedBox(width: 4),
             SizedBox(width: 60, child: _Key(label: '→', onTap: () => actions.sendKeyPress(modifiers, [0x4F]))),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(width: 80, child: _Key(label: 'PgUp', onTap: () => actions.sendKeyPress(modifiers, [0x4B]))),
-            const SizedBox(width: 4),
-            SizedBox(width: 80, child: _Key(label: 'PgDn', onTap: () => actions.sendKeyPress(modifiers, [0x4E]))),
           ],
         ),
       ],

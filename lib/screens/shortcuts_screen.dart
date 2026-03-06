@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/shortcut_key.dart';
 import '../models/shortcut_profile.dart';
 import '../providers/bluetooth_provider.dart';
+import '../providers/shortcut_provider.dart';
+import '../providers/settings_provider.dart';
 import '../widgets/connection_bar.dart';
+import '../widgets/shortcut_edit_dialog.dart';
 import '../theme/app_colors.dart';
 import '../utils/l10n_utils.dart';
 
@@ -19,13 +22,19 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profiles = ShortcutProfile.getDefaults();
-    final allShortcuts = ShortcutKey.getDefaults();
+    // 使用 Provider 替代 getDefaults()
+    final profiles = ref.watch(profilesProvider);
+    final allShortcuts = ref.watch(shortcutsProvider);
     final shortcuts = allShortcuts.where((s) => _currentProfileId == 'global' || s.profile == _currentProfileId).toList();
-    
+
+    final shortcutsNotifier = ref.read(shortcutsProvider.notifier);
+    final profilesNotifier = ref.read(profilesProvider.notifier);
+
     final actions = ref.read(bluetoothActionsProvider);
-    final connectedDevice = ref.watch(connectedDeviceProvider);
-    final isMac = getDeviceInfo(connectedDevice?.name ?? "")["os"] == "macOS";
+    final settings = ref.watch(settingsProvider);
+
+    // 使用 settings.osType 替代设备名称判断
+    final isMac = settings.osType == "macOS";
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final onSurfaceVariant = isDark ? DarkColors.text2 : LightColors.text2;
@@ -56,7 +65,7 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> {
                     onTap: () => setState(() => _currentProfileId = profile.id),
                   );
                 } else {
-                  return _AddProfileBtn(onTap: () {});
+                  return _AddProfileBtn(onTap: () => _showAddProfileDialog(profilesNotifier));
                 }
               },
             ),
@@ -97,10 +106,10 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> {
                       }
                       actions.sendKeyPress(mods, [shortcut.keyCode]);
                     },
-                    onLongPress: () {},
+                    onLongPress: () => _showEditShortcutDialog(shortcut, shortcutsNotifier),
                   );
                 } else {
-                  return _AddShortcutItem(onTap: () {});
+                  return _AddShortcutItem(onTap: () => _showAddShortcutDialog(shortcutsNotifier));
                 }
               },
             ),
@@ -134,6 +143,134 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> {
           const SizedBox(height: 12),
         ],
       ),
+    );
+  }
+
+  /// 显示添加快捷键对话框
+  void _showAddShortcutDialog(ShortcutsNotifier notifier) async {
+    await ShortcutEditDialog.show(
+      context,
+      profileId: _currentProfileId,
+      onSave: (shortcut) => notifier.addShortcut(shortcut),
+    );
+  }
+
+  /// 显示编辑/删除快捷键菜单
+  void _showEditShortcutDialog(ShortcutKey shortcut, ShortcutsNotifier notifier) async {
+    await showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('编辑'),
+                onTap: () {
+                  Navigator.pop(context);
+                  ShortcutEditDialog.show(
+                    context,
+                    shortcut: shortcut,
+                    profileId: _currentProfileId,
+                    onSave: (s) => notifier.updateShortcut(s),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('删除', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  DeleteConfirmationDialog.show(
+                    context,
+                    itemName: shortcut.name,
+                    onConfirm: () => notifier.deleteShortcut(shortcut.id),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.cancel),
+                title: const Text('取消'),
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// 显示添加配置文件对话框
+  void _showAddProfileDialog(ProfilesNotifier notifier) async {
+    final nameController = TextEditingController();
+    final iconController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bgColor = isDark ? DarkColors.bg1 : LightColors.bg1;
+        final textColor = isDark ? DarkColors.text : LightColors.text;
+        final hintColor = isDark ? DarkColors.text2 : LightColors.text2;
+        final borderColor = isDark ? DarkColors.border : LightColors.border;
+        final accentColor = isDark ? DarkColors.accent : LightColors.primary;
+
+        return AlertDialog(
+          backgroundColor: bgColor,
+          title: Text('添加配置', style: TextStyle(color: textColor)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: '配置名称',
+                  labelStyle: TextStyle(color: hintColor),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: borderColor),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: iconController,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: '图标 (emoji)',
+                  labelStyle: TextStyle(color: hintColor),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: borderColor),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('取消', style: TextStyle(color: hintColor)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (nameController.text.isNotEmpty) {
+                  final profile = ShortcutProfile(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    name: nameController.text,
+                    icon: iconController.text.isNotEmpty ? iconController.text : '📁',
+                  );
+                  notifier.addProfile(profile);
+                }
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: accentColor),
+              child: const Text('添加', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
     );
   }
 }

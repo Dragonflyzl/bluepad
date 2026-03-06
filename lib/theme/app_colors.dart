@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 class DarkColors {
   // 背景色
   static const Color bg = Color(0xFF0A0C10); // --bg
+  static const Color bg1 = Color(0xFF0D0F13); // --bg1 (对话框背景)
   static const Color bg2 = Color(0xFF111318); // --bg2
   static const Color bg3 = Color(0xFF1E232E); // --bg3
   
@@ -31,6 +32,7 @@ class DarkColors {
 class LightColors {
   // 背景色
   static const Color bg = Color(0xFFF8FAFC); // --bg-light
+  static const Color bg1 = Color(0xFFFFFFFF); // --bg1-light (对话框背景)
   static const Color bg2 = Color(0xFFFFFFFF); // --bg2-light
   static const Color bg3 = Color(0xFFF1F5F9); // --bg3-light
   
