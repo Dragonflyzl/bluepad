@@ -6,14 +6,18 @@ import 'settings_provider.dart';  // 导入 settingsServiceProvider
 
 /// 快捷键列表 Provider
 final shortcutsProvider = StateNotifierProvider<ShortcutsNotifier, List<ShortcutKey>>((ref) {
-  return ShortcutsNotifier(ref.watch(settingsServiceProvider));
+  final settingsService = ref.watch(settingsServiceProvider);
+  final osType = ref.watch(settingsProvider).osType;
+  final platform = osType == 'macOS' ? 'macos' : 'windows';
+  return ShortcutsNotifier(settingsService, platform);
 });
 
 class ShortcutsNotifier extends StateNotifier<List<ShortcutKey>> {
   final SettingsService _service;
+  final String _platform;
 
-  ShortcutsNotifier(this._service) : super(_service.shortcuts.isEmpty
-      ? ShortcutKey.getDefaults()
+  ShortcutsNotifier(this._service, this._platform) : super(_service.shortcuts.isEmpty
+      ? ShortcutKey.getDefaults(platform: _platform)
       : _service.shortcuts);
 
   /// 添加快捷键
@@ -45,7 +49,7 @@ class ShortcutsNotifier extends StateNotifier<List<ShortcutKey>> {
 
   /// 重置为默认快捷键
   Future<void> resetToDefaults() async {
-    state = ShortcutKey.getDefaults();
+    state = ShortcutKey.getDefaults(platform: _platform);
     await _service.setShortcuts(state);
   }
 }
@@ -91,5 +95,6 @@ class ProfilesNotifier extends StateNotifier<List<ShortcutProfile>> {
 
 /// 当前选中的配置文件 ID
 final currentProfileIdProvider = StateProvider<String>((ref) {
-  return 'global';
+  final osType = ref.watch(settingsProvider).osType;
+  return osType == 'macOS' ? 'macos' : 'windows';
 });

@@ -371,3 +371,48 @@ I/MIUIInput(16531): [MotionEvent] ViewRootImpl windowName 'com.dragonfly.bluepad
 1. 每次点开蓝牙连接界面的时候会跳出来位置信息授权；
 2. 键盘模块中，虚拟键盘的切换中英文按钮，有时候得按两到三下才能切换，请你找出原因并进行修正
 3. 虚拟键盘中，点击功能键，例如
+
+
+测试后，发现以下问题：
+1. 目前的双击拖拽触发条件不对，请重新思考双击点击和双击拖拽的逻辑区分，双击是快速点两下松开，双击拖拽是双击，第二下不松进行拖拽，目前双击正确识别，双击拖拽较难触发；
+2. 快捷键模块，请将每个快捷键的具体按键也写在快捷键的面板上；
+3. 去掉设置模块中的“惯性滚动功能”
+4. 初次安装app打开的时候会闪退，app报错信息如下：
+java.lang.RuntimeException: Unable to start service com.example.bluepad.HidService@952302 with Intent { cmp=com.dragonfly.bluepad/com.example.bluepad.HidService }: java.lang.SecurityException: Starting FGS with type connectedDevice callerApp=ProcessRecord{96c9afe 4861:com.dragonfly.bluepad/u0a414} targetSDK=36 requires permissions: all of the permissions allOf=true [android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE] any of the permissions allOf=false [android.permission.BLUETOOTH_ADVERTISE, android.permission.BLUETOOTH_CONNECT, android.permission.BLUETOOTH_SCAN, android.permission.CHANGE_NETWORK_STATE, android.permission.CHANGE_WIFI_STATE, android.permission.CHANGE_WIFI_MULTICAST_STATE, android.permission.NFC, android.permission.TRANSMIT_IR, android.permission.UWB_RANGING, USB Device, USB Accessory] 
+	at android.app.ActivityThread.handleServiceArgs(ActivityThread.java:5635)
+	at android.app.ActivityThread.-$$Nest$mhandleServiceArgs(Unknown Source:0)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2751)
+	at android.os.Handler.dispatchMessage(Handler.java:107)
+	at android.os.Looper.loopOnce(Looper.java:249)
+	at android.os.Looper.loop(Looper.java:337)
+	at android.app.ActivityThread.main(ActivityThread.java:9682)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:625)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:944)
+Caused by: java.lang.SecurityException: Starting FGS with type connectedDevice callerApp=ProcessRecord{96c9afe 4861:com.dragonfly.bluepad/u0a414} targetSDK=36 requires permissions: all of the permissions allOf=true [android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE] any of the permissions allOf=false [android.permission.BLUETOOTH_ADVERTISE, android.permission.BLUETOOTH_CONNECT, android.permission.BLUETOOTH_SCAN, android.permission.CHANGE_NETWORK_STATE, android.permission.CHANGE_WIFI_STATE, android.permission.CHANGE_WIFI_MULTICAST_STATE, android.permission.NFC, android.permission.TRANSMIT_IR, android.permission.UWB_RANGING, USB Device, USB Accessory] 
+	at android.os.Parcel.createExceptionOrNull(Parcel.java:3255)
+	at android.os.Parcel.createException(Parcel.java:3239)
+	at android.os.Parcel.readException(Parcel.java:3222)
+	at android.os.Parcel.readException(Parcel.java:3164)
+	at android.app.IActivityManager$Stub$Proxy.setServiceForeground(IActivityManager.java:7645)
+	at android.app.Service.startForeground(Service.java:776)
+	at com.example.bluepad.HidService.onStartCommand(HidService.kt:48)
+	at android.app.ActivityThread.handleServiceArgs(ActivityThread.java:5617)
+	... 9 more
+Caused by: android.os.RemoteException: Remote stack trace:
+	at com.android.server.am.ActiveServices.validateForegroundServiceType(ActiveServices.java:3071)
+	at com.android.server.am.ActiveServices.setServiceForegroundInnerLocked(ActiveServices.java:2755)
+	at com.android.server.am.ActiveServices.setServiceForegroundLocked(ActiveServices.java:1986)
+	at com.android.server.am.ActivityManagerService.setServiceForeground(ActivityManagerService.java:15203)
+	at android.app.IActivityManager$Stub.onTransact$setServiceForeground$(IActivityManager.java:13776)
+
+
+
+
+测试后，发现以下问题：
+1. 在剪贴板添加一个收藏夹的页面，可以收藏剪贴板的内容，例如经常需要键入的一些内容，可以快速发送到设备；
+2. app的触感反馈功能没有作用，请你进行分析并修改；
+3. 在空中鼠标模块，按住之后启动功能，在松开之后会进行左键点击一下，请去除这个左键点击；
+
+
+

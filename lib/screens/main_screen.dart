@@ -3,8 +3,10 @@
 /// 包含底部导航栏和各个功能页面
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/connection_bar.dart';
 import '../widgets/tab_bar.dart';
+import '../providers/clipboard_provider.dart';
 import 'touchpad_screen.dart';
 import 'keyboard_screen.dart';
 import 'air_mouse_screen.dart';
@@ -13,14 +15,14 @@ import 'clipboard_screen.dart';
 import 'settings_screen.dart';
 
 /// 主屏幕组件
-class MainScreen extends StatefulWidget {
+class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends ConsumerState<MainScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
@@ -40,6 +42,26 @@ class _MainScreenState extends State<MainScreen> {
     '剪贴板',
     '设置',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App 返回前台时检查剪贴板
+      ref.read(clipboardActionsProvider).checkClipboard();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

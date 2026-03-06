@@ -43,7 +43,7 @@ class TouchpadScreen extends ConsumerWidget {
                   actions.sendMouseMove(dx, dy, buttons: buttonMask);
                 },
                 onMouseClick: (button) {
-                  _sendClick(actions, button);
+                  _sendClick(actions, button, haptic: settings.haptic);
                 },
                 onScroll: (v, h) {
                   actions.sendScroll(v, horizontal: h);
@@ -69,17 +69,17 @@ class TouchpadScreen extends ConsumerWidget {
               _MouseButton(
                 label: context.s('touch_mouse_left'),
                 flex: 2,
-                onTap: () => _sendClick(actions, MouseButton.left),
+                onTap: () => _sendClick(actions, MouseButton.left, haptic: settings.haptic),
               ),
               _MouseButton(
                 label: context.s('touch_mouse_mid'),
                 flex: 1,
-                onTap: () => _sendClick(actions, MouseButton.middle),
+                onTap: () => _sendClick(actions, MouseButton.middle, haptic: settings.haptic),
               ),
               _MouseButton(
                 label: context.s('touch_mouse_right'),
                 flex: 2,
-                onTap: () => _sendClick(actions, MouseButton.right),
+                onTap: () => _sendClick(actions, MouseButton.right, haptic: settings.haptic),
               ),
             ],
           ),
@@ -108,7 +108,10 @@ class TouchpadScreen extends ConsumerWidget {
     );
   }
 
-  void _sendClick(BluetoothActions actions, MouseButton button) {
+  void _sendClick(BluetoothActions actions, MouseButton button, {bool haptic = false}) {
+    if (haptic) {
+      actions.vibrate(20);  // 20ms 短振动
+    }
     int btnMask = 0;
     switch (button) {
       case MouseButton.left: btnMask = 0x01; break;

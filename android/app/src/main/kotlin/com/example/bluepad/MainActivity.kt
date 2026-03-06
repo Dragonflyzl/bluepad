@@ -41,7 +41,17 @@ class MainActivity : FlutterActivity() {
     private lateinit var methodChannel: MethodChannel
     private lateinit var permissionPrefs: SharedPreferences
 
-    private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        // Android 14+ (API 34+) 需要前台服务权限
+        arrayOf(
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_ADVERTISE,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE
+        )
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         arrayOf(
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,
@@ -243,13 +253,20 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun vibrate(duration: Int) {
-        vibrator?.let { v ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                v.vibrate(VibrationEffect.createOneShot(duration.toLong(), VibrationEffect.DEFAULT_AMPLITUDE))
-            } else {
-                @Suppress("DEPRECATION")
-                v.vibrate(duration.toLong())
-            }
+        if (vibrator == null) {
+            Log.w(TAG, "Vibrator is null, device may not support vibration")
+            return
+        }
+        if (!vibrator!!.hasVibrator()) {
+            Log.w(TAG, "Device does not have a vibrator")
+            return
+        }
+        Log.d(TAG, "Vibrating for ${duration}ms")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator!!.vibrate(VibrationEffect.createOneShot(duration.toLong(), VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator!!.vibrate(duration.toLong())
         }
     }
 }

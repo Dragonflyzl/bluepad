@@ -61,10 +61,16 @@ class ShortcutProfile {
   static List<ShortcutProfile> getDefaults() {
     return const [
       ShortcutProfile(
-        id: 'global',
-        name: '全局',
-        icon: '🌐',
-        description: '全局通用快捷键',
+        id: 'windows',
+        name: 'Windows',
+        icon: '🪟',
+        description: 'Windows 系统快捷键',
+      ),
+      ShortcutProfile(
+        id: 'macos',
+        name: 'macOS',
+        icon: '🍎',
+        description: 'macOS 系统快捷键',
       ),
       ShortcutProfile(
         id: 'vscode',
@@ -73,7 +79,7 @@ class ShortcutProfile {
         description: 'Visual Studio Code',
       ),
       ShortcutProfile(
-        id: 'ps',
+        id: 'photoshop',
         name: 'Photoshop',
         icon: '🎨',
         description: 'Adobe Photoshop',
@@ -81,14 +87,14 @@ class ShortcutProfile {
       ShortcutProfile(
         id: 'browser',
         name: '浏览器',
-        icon: '🌍',
+        icon: '🌐',
         description: '网页浏览器',
       ),
     ];
   }
 
   /// 检查是否为内置配置（不可删除）
-  bool get isBuiltIn => ['global', 'vscode', 'ps', 'browser'].contains(id);
+  bool get isBuiltIn => ['windows', 'macos', 'vscode', 'photoshop', 'browser'].contains(id);
 
   @override
   String toString() {

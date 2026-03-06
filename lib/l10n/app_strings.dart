@@ -57,6 +57,10 @@ class AppStrings {
       'cb_action_send': '发送',
       'cb_toast_no_chinese': '提示：含非英文字符，请确保目标电脑已切换为英文输入法',
       'cb_settings_title': '剪贴板设置',
+      'cb_tab_all': '全部',
+      'cb_tab_favorites': '收藏',
+      'cb_save_history': '保存历史',
+      'cb_save_history_desc': '保存剪贴板历史记录',
       
       'settings_group_touchpad': '触控板设置',
       'settings_sensitivity': '触摸灵敏度',
@@ -148,7 +152,11 @@ class AppStrings {
       'cb_action_send': 'Send',
       'cb_toast_no_chinese': 'Note: Non-ASCII characters detected. Ensure PC is in English input mode.',
       'cb_settings_title': 'Clipboard Settings',
-      
+      'cb_tab_all': 'All',
+      'cb_tab_favorites': 'Favorites',
+      'cb_save_history': 'Save History',
+      'cb_save_history_desc': 'Save clipboard history records',
+
       'settings_group_touchpad': 'Touchpad Settings',
       'settings_sensitivity': 'Pointer Sensitivity',
       'settings_scroll_speed': 'Scroll Speed',

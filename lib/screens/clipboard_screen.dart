@@ -18,6 +18,7 @@ class ClipboardScreen extends ConsumerStatefulWidget {
 
 class _ClipboardScreenState extends ConsumerState<ClipboardScreen> {
   String _searchQuery = "";
+  int _selectedTab = 0; // 0: 全部, 1: 收藏
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -40,8 +41,11 @@ class _ClipboardScreenState extends ConsumerState<ClipboardScreen> {
     final autoSync = ref.watch(clipboardAutoSyncProvider);
     const sensitiveDetection = false; 
     
-    final filteredHistory = history.where((item) => 
-      item.content.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+    final filteredHistory = history.where((item) {
+      final matchesSearch = item.content.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesTab = _selectedTab == 0 || item.isFavorite;
+      return matchesSearch && matchesTab;
+    }).toList();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceVariant = isDark ? DarkColors.bg3 : LightColors.bg3;
@@ -98,19 +102,20 @@ class _ClipboardScreenState extends ConsumerState<ClipboardScreen> {
             ),
           ),
 
-          // Quick Settings Row
+          // Tab Switcher (全部/收藏)
           Row(
             children: [
-              _QuickSettingChip(
-                label: context.s('cb_auto_sync'),
-                isActive: autoSync,
-                onTap: () => ref.read(clipboardAutoSyncProvider.notifier).toggle(),
+              _TabChip(
+                label: context.s('cb_tab_all'),
+                isSelected: _selectedTab == 0,
+                onTap: () => setState(() => _selectedTab = 0),
               ),
               const SizedBox(width: 8),
-              _QuickSettingChip(
-                label: context.s('cb_sensitive_filter'),
-                isActive: sensitiveDetection,
-                onTap: () {},
+              _TabChip(
+                label: context.s('cb_tab_favorites'),
+                icon: Icons.star,
+                isSelected: _selectedTab == 1,
+                onTap: () => setState(() => _selectedTab = 1),
               ),
             ],
           ),
@@ -215,6 +220,57 @@ class _QuickSettingChip extends StatelessWidget {
   }
 }
 
+class _TabChip extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _TabChip({
+    required this.label,
+    this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = isDark ? DarkColors.accent : LightColors.primary;
+    final surfaceVariant = isDark ? DarkColors.bg3 : LightColors.bg3;
+    final onSurfaceVariant = isDark ? DarkColors.text2 : LightColors.text2;
+
+    final bgColor = isSelected ? accentColor.withOpacity(0.15) : surfaceVariant;
+    final borderColor = isSelected ? accentColor : (isDark ? DarkColors.border : LightColors.border);
+    final textColor = isSelected ? accentColor : onSurfaceVariant;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 14, color: textColor),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ClipboardItemCard extends ConsumerWidget {
   final ClipboardItem item;
   const _ClipboardItemCard({required this.item});
@@ -258,13 +314,28 @@ class _ClipboardItemCard extends ConsumerWidget {
                   ),
                 ],
               ),
-              GestureDetector(
-                onTap: () {
-                  if (item.id != null) {
-                    ref.read(clipboardHistoryProvider.notifier).deleteItem(item.id!);
-                  }
-                },
-                child: Icon(Icons.close, size: 14, color: onSurfaceVariant),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      ref.read(clipboardHistoryProvider.notifier).toggleFavorite(item);
+                    },
+                    child: Icon(
+                      item.isFavorite ? Icons.star : Icons.star_border,
+                      size: 16,
+                      color: item.isFavorite ? accentColor : onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      if (item.id != null) {
+                        ref.read(clipboardHistoryProvider.notifier).deleteItem(item.id!);
+                      }
+                    },
+                    child: Icon(Icons.close, size: 14, color: onSurfaceVariant),
+                  ),
+                ],
               ),
             ],
           ),

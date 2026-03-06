@@ -104,7 +104,8 @@ class _TouchPadAreaState extends State<TouchPadArea> {
           now.difference(_lastUpTime!).inMilliseconds < 300 &&
           _lastGestureWasTap);
 
-      if (_isDraggingMode) _gestureMode = 1;
+      // 不在 PointerDown 时立即设置 gestureMode = 1
+      // 等用户实际移动后再决定是否进入拖拽模式
     } else {
       if (_pointers.length > _maxPointers) _maxPointers = _pointers.length;
 
@@ -135,6 +136,11 @@ class _TouchPadAreaState extends State<TouchPadArea> {
     _feedbackNotifier.value = avgPos;
 
     if (_pointers.length == 1) {
+      // 如果是拖拽候选模式，检查是否用户真的开始移动
+      if (_isDraggingMode && _gestureMode == 0 && delta.distance > 2) {
+        _gestureMode = 1;  // 用户开始拖拽
+      }
+
       if (_gestureMode == 0 || _gestureMode == 1) {
         _accX += delta.dx * widget.sensitivity;
         _accY += delta.dy * widget.sensitivity;
@@ -283,12 +289,21 @@ class _TouchPadAreaState extends State<TouchPadArea> {
 
     final duration =
         upTime.difference(_downTime ?? upTime).inMilliseconds;
-    final isTap =
-        _totalDist < 15 && duration < 300 && _gestureMode == 0;
+
+    // 判断是否是点击：移动距离小且时间短
+    // 注意：_isDraggingMode 为 true 时（双击候选），_gestureMode 可能为 0（用户没移动）
+    // 这时应该识别为双击点击，而不是拖拽
+    final isTap = _totalDist < 15 && duration < 300 && (_gestureMode == 0 || _isDraggingMode);
 
     if (isTap) {
       if (widget.tapToClick && _maxPointers == 1) {
-        widget.onMouseClick(MouseButton.left);
+        // 如果是拖拽候选模式但没有移动，这是双击的第二次点击
+        // 需要发送两次点击来实现双击
+        if (_isDraggingMode) {
+          widget.onMouseClick(MouseButton.left);  // 第二次点击
+        } else {
+          widget.onMouseClick(MouseButton.left);  // 普通单击
+        }
       } else if (_maxPointers == 2) {
         widget.onMouseClick(MouseButton.right);
       }

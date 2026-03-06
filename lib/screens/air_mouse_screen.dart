@@ -7,11 +7,18 @@ import '../providers/bluetooth_provider.dart';
 import '../providers/settings_provider.dart';
 import '../utils/l10n_utils.dart';
 
-class AirMouseScreen extends ConsumerWidget {
+class AirMouseScreen extends ConsumerStatefulWidget {
   const AirMouseScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AirMouseScreen> createState() => _AirMouseScreenState();
+}
+
+class _AirMouseScreenState extends ConsumerState<AirMouseScreen> {
+  bool _isDragging = false;
+
+  @override
+  Widget build(BuildContext context) {
     final sensorState = ref.watch(sensorProvider);
     final sensorNotifier = ref.read(sensorProvider.notifier);
     final settings = ref.watch(settingsProvider);
@@ -86,47 +93,65 @@ class AirMouseScreen extends ConsumerWidget {
 
           // Main Interaction Area
           Expanded(
-            child: GestureDetector(
-              onPanDown: (_) => sensorNotifier.setClutch(true),
-              onPanEnd: (_) => sensorNotifier.setClutch(false),
-              onPanCancel: () => sensorNotifier.setClutch(false),
-              onDoubleTap: () => _sendClick(bluetoothActions, MouseButton.left, doubleClick: true),
-              onTap: () => _sendClick(bluetoothActions, MouseButton.left),
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: sensorState.isClutchPressed 
-                    ? accentColor.withOpacity(0.1) 
-                    : (isDark ? DarkColors.bg3 : LightColors.bg3),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: sensorState.isClutchPressed ? accentColor : outlineColor,
-                    width: 2,
+            child: Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: (_) {
+                _isDragging = false;
+                sensorNotifier.setClutch(true);
+              },
+              onPointerMove: (_) {
+                if (!_isDragging) _isDragging = true;
+              },
+              onPointerUp: (_) {
+                sensorNotifier.setClutch(false);
+                // 只有没有移动才触发点击
+                if (!_isDragging) {
+                  _sendClick(bluetoothActions, MouseButton.left);
+                }
+              },
+              onPointerCancel: (_) {
+                sensorNotifier.setClutch(false);
+              },
+              child: GestureDetector(
+                onDoubleTap: () {
+                  _sendClick(bluetoothActions, MouseButton.left, doubleClick: true);
+                },
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: sensorState.isClutchPressed
+                      ? accentColor.withOpacity(0.1)
+                      : (isDark ? DarkColors.bg3 : LightColors.bg3),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: sensorState.isClutchPressed ? accentColor : outlineColor,
+                      width: 2,
+                    ),
                   ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      sensorState.isClutchPressed ? Icons.ads_click : Icons.touch_app,
-                      size: 64,
-                      color: sensorState.isClutchPressed ? accentColor : onSurfaceVariant.withOpacity(0.5),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      sensorState.isClutchPressed ? context.s('air_mouse_moving') : context.s('air_mouse_hold_to_move'),
-                      style: TextStyle(
-                        color: sensorState.isClutchPressed ? accentColor : onSurfaceVariant,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        sensorState.isClutchPressed ? Icons.ads_click : Icons.touch_app,
+                        size: 64,
+                        color: sensorState.isClutchPressed ? accentColor : onSurfaceVariant.withOpacity(0.5),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      context.s('air_mouse_tap_hint'),
-                      style: TextStyle(color: onSurfaceVariant.withOpacity(0.7), fontSize: 12),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      Text(
+                        sensorState.isClutchPressed ? context.s('air_mouse_moving') : context.s('air_mouse_hold_to_move'),
+                        style: TextStyle(
+                          color: sensorState.isClutchPressed ? accentColor : onSurfaceVariant,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        context.s('air_mouse_tap_hint'),
+                        style: TextStyle(color: onSurfaceVariant.withOpacity(0.7), fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

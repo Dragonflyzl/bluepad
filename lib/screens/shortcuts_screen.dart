@@ -376,7 +376,7 @@ class _ShortcutGridItemState extends State<_ShortcutGridItem> {
             ),
             const SizedBox(height: 2),
             Text(
-              _getModifierSymbols(widget.shortcut.modifiers, widget.isMac),
+              widget.shortcut.fullDisplayName,
               style: TextStyle(color: isDark ? DarkColors.text2 : LightColors.text2, fontSize: 9, fontFamily: 'monospace'),
             ),
           ],

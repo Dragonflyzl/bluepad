@@ -57,12 +57,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               value: settings.naturalScroll,
               onChanged: (v) => notifier.setNaturalScroll(v),
             ),
-            _SettingToggle(
-              label: context.s('settings_inertia'),
-              desc: context.s('settings_inertia_desc'),
-              value: settings.inertia,
-              onChanged: (v) => notifier.setInertia(v),
-            ),
           ],
         ),
         const SizedBox(height: 10),
@@ -91,12 +85,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _SettingGroup(
           title: context.s('cb_settings_title'),
           children: [
-            _SettingToggle(
-              label: context.s('cb_auto_sync'),
-              desc: context.s('cb_auto_sync_desc'),
-              value: settings.clipboardAutoSync,
-              onChanged: (v) => notifier.setClipboardAutoSync(v),
-            ),
             _SettingToggle(
               label: context.s('cb_sensitive_filter'),
               desc: context.s('cb_sensitive_filter_desc'),

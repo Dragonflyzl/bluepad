@@ -7,6 +7,7 @@ import '../widgets/touchpad_area.dart';
 import '../widgets/connection_bar.dart';
 import '../models/models.dart';
 import '../utils/l10n_utils.dart';
+import '../utils/hid_key_mapper.dart';
 
 /// 键盘屏幕
 /// 对应 Android: KeyboardScreen.kt
@@ -19,7 +20,6 @@ class KeyboardScreen extends ConsumerStatefulWidget {
 
 class _KeyboardScreenState extends ConsumerState<KeyboardScreen> {
   int _mode = 0; // 0: ABC, 1: 123, 2: Sym, 3: Fn, 4: Nav
-  bool _isChineseMode = false;
   bool _isCapsLock = false;
   int _activeModifiers = 0;
   bool _isModifierLocked = false;
@@ -39,9 +39,9 @@ class _KeyboardScreenState extends ConsumerState<KeyboardScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 6.0),
       child: Column(
         children: [
-          // --- Touchpad Area ---
+          // --- Touchpad Area (larger) ---
           Expanded(
-            flex: 3,
+            flex: 5,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: ClipRRect(
@@ -114,11 +114,10 @@ class _KeyboardScreenState extends ConsumerState<KeyboardScreen> {
                   ],
                 ),
                 _ModeBtn(
-                  label: _isChineseMode ? '中' : 'EN',
-                  isActive: _isChineseMode,
+                  label: '中/EN',
+                  isActive: false,
                   onTap: () {
-                    setState(() => _isChineseMode = !_isChineseMode);
-                    // 对应 Android switchInputMethod: 发送 Ctrl+Space
+                    // 切换输入法: 发送 Ctrl+Space
                     actions.sendKeyPress(0x01, [0x2C]);
                   },
                 ),
@@ -140,10 +139,10 @@ class _KeyboardScreenState extends ConsumerState<KeyboardScreen> {
             ),
           ),
 
-          // --- Keyboard Layout ---
+          // --- Keyboard Layout (at bottom, smaller) ---
           Expanded(
-            flex: 4,
-            child: _buildLayout(actions, isMac),
+            flex: 3,
+            child: _buildLayout(actions, isMac, settings.haptic ? () => actions.vibrate(10) : null),
           ),
           const SizedBox(height: 8),
         ],
@@ -184,22 +183,23 @@ class _KeyboardScreenState extends ConsumerState<KeyboardScreen> {
     });
   }
 
-  Widget _buildLayout(BluetoothActions actions, bool isMac) {
+  Widget _buildLayout(BluetoothActions actions, bool isMac, VoidCallback? onHaptic) {
     switch (_mode) {
-      case 0: 
+      case 0:
         return _QWERTYLayout(
-          actions: actions, 
-          isCapsLock: _isCapsLock, 
-          onCapsLock: () => setState(() => _isCapsLock = !_isCapsLock), 
+          actions: actions,
+          isCapsLock: _isCapsLock,
+          onCapsLock: () => setState(() => _isCapsLock = !_isCapsLock),
           modifiers: _activeModifiers,
           onKeyTap: () {
             if (!_isModifierLocked) setState(() => _activeModifiers = 0);
           },
+          onHaptic: onHaptic,
         );
-      case 1: return _NumberLayout(actions: actions);
-      case 2: return _SymbolLayout(actions: actions);
-      case 3: return _FnLayout(actions: actions, modifiers: _activeModifiers);
-      case 4: return _NavLayout(actions: actions, modifiers: _activeModifiers);
+      case 1: return _NumberLayout(actions: actions, onHaptic: onHaptic);
+      case 2: return _SymbolLayout(actions: actions, onHaptic: onHaptic);
+      case 3: return _FnLayout(actions: actions, modifiers: _activeModifiers, onHaptic: onHaptic);
+      case 4: return _NavLayout(actions: actions, modifiers: _activeModifiers, onHaptic: onHaptic);
       default: return Container();
     }
   }
@@ -386,8 +386,9 @@ class _Key extends StatefulWidget {
   final VoidCallback onTap;
   final double flex;
   final bool isWide;
+  final VoidCallback? onHaptic;
 
-  const _Key({required this.label, required this.onTap, this.flex = 1.0, this.isWide = false});
+  const _Key({required this.label, required this.onTap, this.flex = 1.0, this.isWide = false, this.onHaptic});
 
   @override
   State<_Key> createState() => _KeyState();
@@ -408,6 +409,7 @@ class _KeyState extends State<_Key> {
       child: GestureDetector(
         onTapDown: (_) {
           setState(() => _isPressed = true);
+          widget.onHaptic?.call();
           widget.onTap();
         },
         onTapUp: (_) => setState(() => _isPressed = false),
@@ -443,13 +445,15 @@ class _QWERTYLayout extends StatelessWidget {
   final VoidCallback onCapsLock;
   final int modifiers;
   final VoidCallback onKeyTap;
+  final VoidCallback? onHaptic;
 
   const _QWERTYLayout({
-    required this.actions, 
-    required this.isCapsLock, 
-    required this.onCapsLock, 
+    required this.actions,
+    required this.isCapsLock,
+    required this.onCapsLock,
     required this.modifiers,
     required this.onKeyTap,
+    this.onHaptic,
   });
 
   @override
@@ -462,7 +466,7 @@ class _QWERTYLayout extends StatelessWidget {
           children: [
             ..._buildRowList("asdfghjkl".split("")),
             const SizedBox(width: 4),
-            _Key(label: '⌫', flex: 1.5, isWide: true, onTap: () {
+            _Key(label: '⌫', flex: 1.5, isWide: true, onHaptic: onHaptic, onTap: () {
               actions.sendKeyPress(modifiers, [0x2A]);
               onKeyTap();
             }),
@@ -471,11 +475,11 @@ class _QWERTYLayout extends StatelessWidget {
         const SizedBox(height: 4),
         Row(
           children: [
-            _Key(label: 'Caps', flex: 1.5, isWide: true, onTap: onCapsLock),
+            _Key(label: 'Caps', flex: 1.5, isWide: true, onHaptic: onHaptic, onTap: onCapsLock),
             const SizedBox(width: 4),
             ..._buildRowList("zxcvbnm".split("")),
             const SizedBox(width: 4),
-            _Key(label: '↵', flex: 1.5, isWide: true, onTap: () {
+            _Key(label: '↵', flex: 1.5, isWide: true, onHaptic: onHaptic, onTap: () {
               actions.sendKeyPress(modifiers, [0x28]);
               onKeyTap();
             }),
@@ -484,29 +488,29 @@ class _QWERTYLayout extends StatelessWidget {
         const SizedBox(height: 4),
         Row(
           children: [
-            _Key(label: 'Esc', flex: 1.2, isWide: true, onTap: () => actions.sendKeyPress(0, [0x29])),
+            _Key(label: 'Esc', flex: 1.2, isWide: true, onHaptic: onHaptic, onTap: () => actions.sendKeyPress(0, [0x29])),
             const SizedBox(width: 4),
-            _Key(label: ',', onTap: () {
+            _Key(label: ',', onHaptic: onHaptic, onTap: () {
                actions.typeString(",");
                onKeyTap();
             }),
             const SizedBox(width: 4),
-            _Key(label: 'Space', flex: 3.5, onTap: () {
+            _Key(label: 'Space', flex: 3.5, onHaptic: onHaptic, onTap: () {
                actions.sendKeyPress(modifiers, [0x2C]);
                onKeyTap();
             }),
             const SizedBox(width: 4),
-            _Key(label: '.', onTap: () {
+            _Key(label: '.', onHaptic: onHaptic, onTap: () {
                actions.typeString(".");
                onKeyTap();
             }),
             const SizedBox(width: 4),
-            _Key(label: '/', onTap: () {
+            _Key(label: '/', onHaptic: onHaptic, onTap: () {
                actions.typeString("/");
                onKeyTap();
             }),
             const SizedBox(width: 4),
-            _Key(label: 'Tab', flex: 1.2, isWide: true, onTap: () {
+            _Key(label: 'Tab', flex: 1.2, isWide: true, onHaptic: onHaptic, onTap: () {
                actions.sendKeyPress(modifiers, [0x2B]);
                onKeyTap();
             }),
@@ -527,10 +531,17 @@ class _QWERTYLayout extends StatelessWidget {
     for (int i = 0; i < chars.length; i++) {
       if (i > 0) list.add(const SizedBox(width: 4));
       final char = chars[i];
+      final displayChar = isCapsLock ? char.toUpperCase() : char;
       list.add(_Key(
-        label: isCapsLock ? char.toUpperCase() : char,
+        label: displayChar,
+        onHaptic: onHaptic,
         onTap: () {
-          actions.typeString(isCapsLock ? char.toUpperCase() : char);
+          // 获取字符的 HID 信息
+          final info = HidKeyMapper.charToHid(displayChar);
+          if (info != null) {
+            // 合并修饰键：用户修饰键 | 字符自带修饰键（如 Shift 用于大写）
+            actions.sendKeyPress(modifiers | info.modifiers, [info.keyCode]);
+          }
           onKeyTap();
         },
       ));
@@ -541,7 +552,8 @@ class _QWERTYLayout extends StatelessWidget {
 
 class _NumberLayout extends StatelessWidget {
   final BluetoothActions actions;
-  const _NumberLayout({required this.actions});
+  final VoidCallback? onHaptic;
+  const _NumberLayout({required this.actions, this.onHaptic});
 
   @override
   Widget build(BuildContext context) {
@@ -555,11 +567,11 @@ class _NumberLayout extends StatelessWidget {
         const SizedBox(height: 4),
         Row(
           children: [
-            _Key(label: '.', onTap: () => actions.typeString(".")),
+            _Key(label: '.', onHaptic: onHaptic, onTap: () => actions.typeString(".")),
             const SizedBox(width: 4),
-            _Key(label: '0', onTap: () => actions.typeString("0")),
+            _Key(label: '0', onHaptic: onHaptic, onTap: () => actions.typeString("0")),
             const SizedBox(width: 4),
-            _Key(label: '⌫', onTap: () => actions.typeString("\b")),
+            _Key(label: '⌫', onHaptic: onHaptic, onTap: () => actions.typeString("\b")),
           ],
         ),
       ],
@@ -568,7 +580,7 @@ class _NumberLayout extends StatelessWidget {
 
   Widget _buildRow(List<String> chars) {
     return Row(
-      children: chars.map((c) => _Key(label: c, onTap: () => actions.typeString(c))).toList()
+      children: chars.map((c) => _Key(label: c, onHaptic: onHaptic, onTap: () => actions.typeString(c))).toList()
         .expand((w) => [w, const SizedBox(width: 4)]).toList()..removeLast(),
     );
   }
@@ -576,7 +588,8 @@ class _NumberLayout extends StatelessWidget {
 
 class _SymbolLayout extends StatelessWidget {
   final BluetoothActions actions;
-  const _SymbolLayout({required this.actions});
+  final VoidCallback? onHaptic;
+  const _SymbolLayout({required this.actions, this.onHaptic});
 
   // 完整符号集，每行 8 个
   static const _row1 = ["!", "@", "#", "\$", "%", "^", "&", "*"];
@@ -606,6 +619,7 @@ class _SymbolLayout extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 2),
           child: _Key(
             label: c,
+            onHaptic: onHaptic,
             onTap: () => actions.typeString(c),
             flex: 1.0,
           ),
@@ -618,7 +632,8 @@ class _SymbolLayout extends StatelessWidget {
 class _FnLayout extends StatelessWidget {
   final BluetoothActions actions;
   final int modifiers;
-  const _FnLayout({required this.actions, required this.modifiers});
+  final VoidCallback? onHaptic;
+  const _FnLayout({required this.actions, required this.modifiers, this.onHaptic});
 
   @override
   Widget build(BuildContext context) {
@@ -628,7 +643,7 @@ class _FnLayout extends StatelessWidget {
       crossAxisSpacing: 4,
       childAspectRatio: 1.5,
       children: List.generate(12, (index) {
-        return _Key(label: 'F${index + 1}', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x3A + index]));
+        return _Key(label: 'F${index + 1}', isWide: true, onHaptic: onHaptic, onTap: () => actions.sendKeyPress(modifiers, [0x3A + index]));
       }),
     );
   }
@@ -637,7 +652,8 @@ class _FnLayout extends StatelessWidget {
 class _NavLayout extends StatelessWidget {
   final BluetoothActions actions;
   final int modifiers;
-  const _NavLayout({required this.actions, required this.modifiers});
+  final VoidCallback? onHaptic;
+  const _NavLayout({required this.actions, required this.modifiers, this.onHaptic});
 
   @override
   Widget build(BuildContext context) {
@@ -648,11 +664,11 @@ class _NavLayout extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(width: 64, child: _Key(label: 'Ins', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x49]))),
+            SizedBox(width: 64, child: _Key(label: 'Ins', isWide: true, onHaptic: onHaptic, onTap: () => actions.sendKeyPress(modifiers, [0x49]))),
             const SizedBox(width: 4),
-            SizedBox(width: 64, child: _Key(label: 'Home', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x4A]))),
+            SizedBox(width: 64, child: _Key(label: 'Home', isWide: true, onHaptic: onHaptic, onTap: () => actions.sendKeyPress(modifiers, [0x4A]))),
             const SizedBox(width: 4),
-            SizedBox(width: 64, child: _Key(label: 'PgUp', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x4B]))),
+            SizedBox(width: 64, child: _Key(label: 'PgUp', isWide: true, onHaptic: onHaptic, onTap: () => actions.sendKeyPress(modifiers, [0x4B]))),
           ],
         ),
         const SizedBox(height: 4),
@@ -660,11 +676,11 @@ class _NavLayout extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(width: 64, child: _Key(label: 'Del', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x4C]))),
+            SizedBox(width: 64, child: _Key(label: 'Del', isWide: true, onHaptic: onHaptic, onTap: () => actions.sendKeyPress(modifiers, [0x4C]))),
             const SizedBox(width: 4),
-            SizedBox(width: 64, child: _Key(label: 'End', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x4D]))),
+            SizedBox(width: 64, child: _Key(label: 'End', isWide: true, onHaptic: onHaptic, onTap: () => actions.sendKeyPress(modifiers, [0x4D]))),
             const SizedBox(width: 4),
-            SizedBox(width: 64, child: _Key(label: 'PgDn', isWide: true, onTap: () => actions.sendKeyPress(modifiers, [0x4E]))),
+            SizedBox(width: 64, child: _Key(label: 'PgDn', isWide: true, onHaptic: onHaptic, onTap: () => actions.sendKeyPress(modifiers, [0x4E]))),
           ],
         ),
         const SizedBox(height: 12),
@@ -673,18 +689,18 @@ class _NavLayout extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const SizedBox(width: 68),
-            SizedBox(width: 60, child: _Key(label: '↑', onTap: () => actions.sendKeyPress(modifiers, [0x52]))),
+            SizedBox(width: 60, child: _Key(label: '↑', onHaptic: onHaptic, onTap: () => actions.sendKeyPress(modifiers, [0x52]))),
           ],
         ),
         const SizedBox(height: 4),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(width: 60, child: _Key(label: '←', onTap: () => actions.sendKeyPress(modifiers, [0x50]))),
+            SizedBox(width: 60, child: _Key(label: '←', onHaptic: onHaptic, onTap: () => actions.sendKeyPress(modifiers, [0x50]))),
             const SizedBox(width: 4),
-            SizedBox(width: 60, child: _Key(label: '↓', onTap: () => actions.sendKeyPress(modifiers, [0x51]))),
+            SizedBox(width: 60, child: _Key(label: '↓', onHaptic: onHaptic, onTap: () => actions.sendKeyPress(modifiers, [0x51]))),
             const SizedBox(width: 4),
-            SizedBox(width: 60, child: _Key(label: '→', onTap: () => actions.sendKeyPress(modifiers, [0x4F]))),
+            SizedBox(width: 60, child: _Key(label: '→', onHaptic: onHaptic, onTap: () => actions.sendKeyPress(modifiers, [0x4F]))),
           ],
         ),
       ],
