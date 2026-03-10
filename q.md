@@ -416,3 +416,67 @@ Caused by: android.os.RemoteException: Remote stack trace:
 
 
 
+请按照下面的要求进行修改快捷键模块：
+1. 由于连接的设备可能是win也可能是mac，两个系统同样的软件快捷键也不相同，所以在快捷键面板分为两个大tab可以切换系统，两个系统各有一套快捷键，包括可扩展的软件快捷键面板，例如vdcode、photpshop等；
+
+
+目录下是一个flutter开发的app，下面是代码的介绍，请你先了解下代码，我有些问题需要你进行处理：
+📁 项目目录结构
+
+lib/
+├── main.dart                    # 应用入口
+├── l10n/                        # 国际化
+│   └── app_strings.dart
+├── models/                      # 数据模型
+│   ├── clipboard_item.dart      # 剪贴板条目
+│   ├── device_info.dart         # 设备信息
+│   ├── shortcut_key.dart        # 快捷键定义
+│   └── shortcut_profile.dart    # 快捷键配置
+├── providers/                   # 状态管理
+│   ├── bluetooth_provider.dart  # 蓝牙状态
+│   ├── clipboard_provider.dart  # 剪贴板状态
+│   ├── input_provider.dart      # 输入状态
+│   ├── sensor_provider.dart     # 传感器状态
+│   ├── settings_provider.dart   # 设置状态
+│   └── shortcut_provider.dart   # 快捷键状态
+├── screens/                     # 界面页面
+│   ├── air_mouse_screen.dart    # 空中鼠标
+│   ├── clipboard_screen.dart    # 剪贴板
+│   ├── keyboard_screen.dart     # 键盘
+│   ├── main_screen.dart         # 主页面
+│   ├── settings_screen.dart     # 设置
+│   ├── shortcuts_screen.dart    # 快捷键
+│   └── touchpad_screen.dart     # 触控板
+├── services/                    # 核心服务
+│   ├── bluetooth_service.dart   # 蓝牙HID服务
+│   ├── sensor_service.dart      # 传感器服务
+│   ├── clipboard_service.dart   # 剪贴板服务
+│   ├── settings_service.dart    # 设置服务
+│   └── database_service.dart    # 数据库服务
+├── utils/                       # 工具类
+│   ├── hid_key_mapper.dart      # HID键位映射
+│   └── hid_report_builder.dart  # HID报告构建
+├── theme/                       # 主题
+│   ├── app_colors.dart          # 颜色定义
+│   └── app_theme.dart           # 主题配置
+└── widgets/                     # UI组件
+    ├── touchpad_area.dart       # 触控板区域核心组件
+    ├── connection_bar.dart      # 连接状态栏
+    └── device_picker_dialog.dart # 设备选择对话框
+🔑 关键文件清单
+文件	功能	重要程度
+main.dart	应用入口，初始化服务和Provider	⭐⭐⭐
+bluetooth_service.dart	通过MethodChannel与Android原生HID通信	⭐⭐⭐⭐⭐
+touchpad_area.dart	触控板核心逻辑：手势识别、惯性滚动、三指操作	⭐⭐⭐⭐⭐
+sensor_service.dart	空中鼠标陀螺仪积分算法	⭐⭐⭐⭐
+air_mouse_screen.dart	空中鼠标界面	⭐⭐⭐⭐
+MainActivity.kt	Android原生HID实现	⭐⭐⭐⭐⭐
+clipboard_screen.dart	剪贴板历史界面	⭐⭐⭐
+settings_screen.dart	设置界面（含触感反馈开关）	⭐⭐⭐
+🏗️ 架构概述
+这是一个 Flutter + Riverpod 架构的蓝牙HID触控板应用：
+
+蓝牙通信: Flutter通过MethodChannel调用Android原生HidDevice API
+状态管理: 使用Riverpod的StateNotifier模式
+触控板: touchpad_area.dart实现了单指移动/点击、双指滚动/缩放、三指轻扫等手势
+空中鼠标: 使用sensors_plus读取陀螺仪数据，通过积分算法转换为鼠标移动

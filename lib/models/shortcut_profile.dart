@@ -1,21 +1,21 @@
-/// 快捷键配置文件数据模型
-/// 对应 Android: data class ShortcutProfile
+/// 软件面板配置模型
 /// 用于分组管理不同应用/场景的快捷键
+/// 注意：面板与系统无关，同一面板在不同系统下有各自的快捷键配置
 
-class ShortcutProfile {
-  /// 配置文件唯一标识
+class AppPanel {
+  /// 面板唯一标识
   final String id;
 
-  /// 配置文件名称
+  /// 面板名称
   final String name;
 
   /// 图标 Emoji 或字符
   final String icon;
 
-  /// 配置文件描述
+  /// 面板描述
   final String description;
 
-  const ShortcutProfile({
+  const AppPanel({
     required this.id,
     required this.name,
     required this.icon,
@@ -23,13 +23,13 @@ class ShortcutProfile {
   });
 
   /// 复制并更新字段
-  ShortcutProfile copyWith({
+  AppPanel copyWith({
     String? id,
     String? name,
     String? icon,
     String? description,
   }) {
-    return ShortcutProfile(
+    return AppPanel(
       id: id ?? this.id,
       name: name ?? this.name,
       icon: icon ?? this.icon,
@@ -38,8 +38,8 @@ class ShortcutProfile {
   }
 
   /// 从 JSON 反序列化
-  factory ShortcutProfile.fromJson(Map<String, dynamic> json) {
-    return ShortcutProfile(
+  factory AppPanel.fromJson(Map<String, dynamic> json) {
+    return AppPanel(
       id: json['id'] as String,
       name: json['name'] as String,
       icon: json['icon'] as String,
@@ -57,34 +57,29 @@ class ShortcutProfile {
     };
   }
 
-  /// 获取默认配置文件列表
-  static List<ShortcutProfile> getDefaults() {
+  /// 获取默认面板列表
+  /// 这些面板在 Windows 和 macOS 下都可用
+  static List<AppPanel> getDefaults() {
     return const [
-      ShortcutProfile(
-        id: 'windows',
-        name: 'Windows',
-        icon: '🪟',
-        description: 'Windows 系统快捷键',
+      AppPanel(
+        id: 'global',
+        name: '全局',
+        icon: '🌐',
+        description: '系统全局快捷键',
       ),
-      ShortcutProfile(
-        id: 'macos',
-        name: 'macOS',
-        icon: '🍎',
-        description: 'macOS 系统快捷键',
-      ),
-      ShortcutProfile(
+      AppPanel(
         id: 'vscode',
         name: 'VSCode',
         icon: '📝',
         description: 'Visual Studio Code',
       ),
-      ShortcutProfile(
+      AppPanel(
         id: 'photoshop',
         name: 'Photoshop',
         icon: '🎨',
         description: 'Adobe Photoshop',
       ),
-      ShortcutProfile(
+      AppPanel(
         id: 'browser',
         name: '浏览器',
         icon: '🌐',
@@ -93,20 +88,24 @@ class ShortcutProfile {
     ];
   }
 
-  /// 检查是否为内置配置（不可删除）
-  bool get isBuiltIn => ['windows', 'macos', 'vscode', 'photoshop', 'browser'].contains(id);
+  /// 检查是否为内置面板（不可删除）
+  bool get isBuiltIn => ['global', 'vscode', 'photoshop', 'browser'].contains(id);
 
   @override
   String toString() {
-    return 'ShortcutProfile(id: $id, name: $name)';
+    return 'AppPanel(id: $id, name: $name)';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is ShortcutProfile && other.id == id;
+    return other is AppPanel && other.id == id;
   }
 
   @override
   int get hashCode => id.hashCode;
 }
+
+/// 兼容旧版本的别名
+/// @deprecated 使用 AppPanel 代替
+typedef ShortcutProfile = AppPanel;

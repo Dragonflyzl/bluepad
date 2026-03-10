@@ -101,7 +101,7 @@ class _TouchPadAreaState extends State<TouchPadArea> {
 
       final now = DateTime.now();
       _isDraggingMode = (_lastUpTime != null &&
-          now.difference(_lastUpTime!).inMilliseconds < 300 &&
+          now.difference(_lastUpTime!).inMilliseconds < 200 &&
           _lastGestureWasTap);
 
       // 不在 PointerDown 时立即设置 gestureMode = 1
@@ -186,7 +186,8 @@ class _TouchPadAreaState extends State<TouchPadArea> {
         final scrollFactor = widget.naturalScroll ? -1.0 : 1.0;
         final scrollDamping = 20.0 / widget.scrollSensitivity;
         _accScrollV += (delta.dy * scrollFactor) / scrollDamping;
-        _accScrollH += (delta.dx * scrollFactor) / scrollDamping;
+        // 水平滚动方向与垂直相反，因为自然滚动的感知方向不同
+        _accScrollH += (delta.dx * -scrollFactor) / scrollDamping;
 
         int sendV = _accScrollV.truncate();
         int sendH = _accScrollH.truncate();

@@ -28,6 +28,8 @@ class AppStrings {
       'kb_mode_nav': 'Nav',
       
       'sc_panel_title': '快捷键面板',
+      'sc_items': '项',
+      'sc_no_shortcuts': '暂无快捷键',
       'sc_media_control': '媒体控制',
       'sc_media_mute': '静音',
       'sc_media_vol_down': '音量-',
@@ -123,6 +125,8 @@ class AppStrings {
       'kb_mode_nav': 'Nav',
       
       'sc_panel_title': 'Shortcuts Panel',
+      'sc_items': 'items',
+      'sc_no_shortcuts': 'No shortcuts',
       'sc_media_control': 'Media Control',
       'sc_media_mute': 'Mute',
       'sc_media_vol_down': 'Vol-',

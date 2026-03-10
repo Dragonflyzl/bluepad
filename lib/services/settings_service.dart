@@ -49,6 +49,7 @@ class SettingsService {
   static const String _keyLanguage = 'app_language';
   static const String _keyThemeMode = 'theme_mode';
   static const String _keyProfiles = 'profiles_json';
+  static const String _keyAppPanels = 'app_panels_json';
   static const String _keyClipboardAutoSync = 'clipboard_auto_sync';
   static const String _keyClipboardSensitiveDetection = 'clipboard_sensitive_detection';
   static const String _keyClipboardSaveHistory = 'clipboard_save_history';
@@ -269,7 +270,7 @@ class SettingsService {
 
   // ==================== 配置文件 ====================
 
-  /// 获取所有配置文件
+  /// 获取所有配置文件（兼容旧版本）
   List<ShortcutProfile> get profiles {
     final jsonString = _preferences.getString(_keyProfiles);
     if (jsonString == null) return ShortcutProfile.getDefaults();
@@ -287,6 +288,28 @@ class SettingsService {
     final jsonString = jsonEncode(profiles.map((e) => e.toJson()).toList());
     await _preferences.setString(_keyProfiles, jsonString);
     _notifyChange(_keyProfiles, profiles);
+  }
+
+  // ==================== 软件面板配置 ====================
+
+  /// 获取所有软件面板
+  List<AppPanel> get appPanels {
+    final jsonString = _preferences.getString(_keyAppPanels);
+    if (jsonString == null) return AppPanel.getDefaults();
+    try {
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      return jsonList.map((e) => AppPanel.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      return AppPanel.getDefaults();
+    }
+  }
+
+  Stream<List<AppPanel>> get appPanelsStream => _getController<List<AppPanel>>(_keyAppPanels).stream;
+
+  Future<void> setAppPanels(List<AppPanel> panels) async {
+    final jsonString = jsonEncode(panels.map((e) => e.toJson()).toList());
+    await _preferences.setString(_keyAppPanels, jsonString);
+    _notifyChange(_keyAppPanels, panels);
   }
 
   // ==================== 设备管理 ====================

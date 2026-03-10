@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import '../models/shortcut_key.dart';
+import '../models/shortcut_profile.dart';
 import '../theme/app_colors.dart';
 
 /// 快捷键编辑对话框
 class ShortcutEditDialog extends StatefulWidget {
   final ShortcutKey? shortcut;  // null 表示新增
-  final String profileId;
+  final String platform;        // 'windows' 或 'macos'
+  final String app;             // 'global', 'vscode' 等
   final Function(ShortcutKey) onSave;
 
   const ShortcutEditDialog({
     super.key,
     this.shortcut,
-    required this.profileId,
+    required this.platform,
+    required this.app,
     required this.onSave,
   });
 
@@ -19,14 +22,16 @@ class ShortcutEditDialog extends StatefulWidget {
   static Future<bool?> show(
     BuildContext context, {
     ShortcutKey? shortcut,
-    required String profileId,
+    required String platform,
+    required String app,
     required Function(ShortcutKey) onSave,
   }) {
     return showDialog<bool>(
       context: context,
       builder: (context) => ShortcutEditDialog(
         shortcut: shortcut,
-        profileId: profileId,
+        platform: platform,
+        app: app,
         onSave: onSave,
       ),
     );
@@ -94,13 +99,14 @@ class _ShortcutEditDialogState extends State<ShortcutEditDialog> {
     }
 
     final shortcut = ShortcutKey(
-      id: widget.shortcut?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id: widget.shortcut?.id ?? '${widget.platform}_${widget.app}_${DateTime.now().millisecondsSinceEpoch}',
       name: _nameController.text,
       icon: _iconController.text.isNotEmpty ? _iconController.text : '⌨',
       modifiers: _modifiers,
       keyCode: _keyCode,
       position: widget.shortcut?.position ?? 0,
-      profile: widget.profileId,
+      platform: widget.platform,
+      app: widget.app,
     );
 
     widget.onSave(shortcut);
@@ -116,6 +122,8 @@ class _ShortcutEditDialogState extends State<ShortcutEditDialog> {
     final borderColor = isDark ? DarkColors.border : LightColors.border;
     final accentColor = isDark ? DarkColors.accent : LightColors.primary;
 
+    final isMac = widget.platform == 'macos';
+
     return AlertDialog(
       backgroundColor: bgColor,
       title: Text(
@@ -129,6 +137,26 @@ class _ShortcutEditDialogState extends State<ShortcutEditDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 显示当前系统和面板
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 16, color: accentColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${isMac ? 'macOS' : 'Windows'} · ${_getAppName(widget.app)}',
+                      style: TextStyle(color: accentColor, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
               // 名称输入框
               TextField(
                 controller: _nameController,
@@ -172,18 +200,24 @@ class _ShortcutEditDialogState extends State<ShortcutEditDialog> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _buildModifierChip('Ctrl', _ctrl, (v) {
-                    setState(() { _ctrl = v; _updateModifiers(); });
-                  }),
-                  _buildModifierChip('Shift', _shift, (v) {
+                  _buildModifierChip(
+                    isMac ? '⌃ Ctrl' : 'Ctrl',
+                    _ctrl,
+                    (v) { setState(() { _ctrl = v; _updateModifiers(); }); },
+                  ),
+                  _buildModifierChip('⇧ Shift', _shift, (v) {
                     setState(() { _shift = v; _updateModifiers(); });
                   }),
-                  _buildModifierChip('Alt', _alt, (v) {
-                    setState(() { _alt = v; _updateModifiers(); });
-                  }),
-                  _buildModifierChip('Win/Cmd', _gui, (v) {
-                    setState(() { _gui = v; _updateModifiers(); });
-                  }),
+                  _buildModifierChip(
+                    isMac ? '⌥ Alt' : 'Alt',
+                    _alt,
+                    (v) { setState(() { _alt = v; _updateModifiers(); }); },
+                  ),
+                  _buildModifierChip(
+                    isMac ? '⌘ Cmd' : '⊞ Win',
+                    _gui,
+                    (v) { setState(() { _gui = v; _updateModifiers(); }); },
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -216,6 +250,12 @@ class _ShortcutEditDialogState extends State<ShortcutEditDialog> {
         ),
       ],
     );
+  }
+
+  String _getAppName(String appId) {
+    final panels = AppPanel.getDefaults();
+    final panel = panels.firstWhere((p) => p.id == appId, orElse: () => panels.first);
+    return panel.name;
   }
 
   Widget _buildModifierChip(String label, bool selected, Function(bool) onChanged) {
@@ -275,6 +315,13 @@ class _KeySelector extends StatelessWidget {
     {'code': 0x28, 'name': 'Enter'}, {'code': 0x29, 'name': 'Esc'},
     {'code': 0x2A, 'name': '⌫'}, {'code': 0x2B, 'name': 'Tab'},
     {'code': 0x2C, 'name': 'Space'},
+    // 符号键
+    {'code': 0x2D, 'name': '-'}, {'code': 0x2E, 'name': '='},
+    {'code': 0x2F, 'name': '['}, {'code': 0x30, 'name': ']'},
+    {'code': 0x31, 'name': '\\'}, {'code': 0x33, 'name': ';'},
+    {'code': 0x34, 'name': "'"}, {'code': 0x35, 'name': '`'},
+    {'code': 0x36, 'name': ','}, {'code': 0x37, 'name': '.'},
+    {'code': 0x38, 'name': '/'},
     // 功能键
     {'code': 0x3A, 'name': 'F1'}, {'code': 0x3B, 'name': 'F2'},
     {'code': 0x3C, 'name': 'F3'}, {'code': 0x3D, 'name': 'F4'},
@@ -285,6 +332,10 @@ class _KeySelector extends StatelessWidget {
     // 导航键
     {'code': 0x4A, 'name': 'Home'}, {'code': 0x4D, 'name': 'End'},
     {'code': 0x4B, 'name': 'PgUp'}, {'code': 0x4E, 'name': 'PgDn'},
+    // 方向键和删除键
+    {'code': 0x49, 'name': 'Ins'}, {'code': 0x4C, 'name': 'Del'},
+    {'code': 0x4F, 'name': '→'}, {'code': 0x50, 'name': '←'},
+    {'code': 0x51, 'name': '↓'}, {'code': 0x52, 'name': '↑'},
   ];
 
   @override

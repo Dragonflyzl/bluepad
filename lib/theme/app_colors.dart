@@ -22,6 +22,7 @@ class DarkColors {
   static const Color purple = Color(0xFF8B5CF6); // --accent2
   static const Color green = Color(0xFF10B981); // --accent3
   static const Color yellow = Color(0xFFF59E0B);
+  static const Color orange = Color(0xFFF97316);
   static const Color red = Color(0xFFEF4444);
   
   // 边框色

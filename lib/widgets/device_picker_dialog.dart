@@ -16,11 +16,23 @@ class DevicePickerDialog extends ConsumerStatefulWidget {
 
 class _DevicePickerDialogState extends ConsumerState<DevicePickerDialog> {
   bool _isScanning = false;
+  String? _connectingAddress;  // 正在连接的设备地址
+  static bool _isDialogOpen = false;  // 防止重复打开
 
   @override
   void initState() {
     super.initState();
-    _startScan();
+    if (!_isDialogOpen) {
+      _isDialogOpen = true;
+      _startScan();
+    }
+  }
+
+  @override
+  void dispose() {
+    _isDialogOpen = false;
+    ref.read(bluetoothActionsProvider).stopScan();
+    super.dispose();
   }
 
   Future<void> _startScan() async {
@@ -41,13 +53,16 @@ class _DevicePickerDialogState extends ConsumerState<DevicePickerDialog> {
   }
 
   Future<void> _connectToDevice(models.DeviceInfo device) async {
+    // 设置连接中状态
+    setState(() => _connectingAddress = device.address);
+
     final actions = ref.read(bluetoothActionsProvider);
     await actions.stopScan();
-    
-    // 显示一个简单的进度提示
+
     final success = await actions.connect(device);
-    
+
     if (mounted) {
+      setState(() => _connectingAddress = null);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(success ? 'Connected to ${device.name}' : 'Connection Failed'),
@@ -56,7 +71,7 @@ class _DevicePickerDialogState extends ConsumerState<DevicePickerDialog> {
         ),
       );
       if (success) {
-        Navigator.pop(context); 
+        Navigator.pop(context);
       }
     }
   }
@@ -147,11 +162,12 @@ class _DevicePickerDialogState extends ConsumerState<DevicePickerDialog> {
                     ...pairedDevices.map((device) => _DeviceItem(
                       device: device,
                       isConnected: device.address == connectedDevice?.address,
-                      onTap: () => _connectToDevice(device),
+                      isConnecting: device.address == _connectingAddress,
+                      onTap: _connectingAddress == null ? () => _connectToDevice(device) : null,
                     )),
 
                   const SizedBox(height: 8),
-                  
+
                   // Available Section
                   _buildSectionHeader(context.s('device_available_section'), accentColor),
                   if (discoveredDevices.isEmpty)
@@ -160,7 +176,8 @@ class _DevicePickerDialogState extends ConsumerState<DevicePickerDialog> {
                     ...discoveredDevices.map((device) => _DeviceItem(
                       device: device,
                       isConnected: false,
-                      onTap: () => _connectToDevice(device),
+                      isConnecting: device.address == _connectingAddress,
+                      onTap: _connectingAddress == null ? () => _connectToDevice(device) : null,
                     )),
                 ],
               ),
@@ -223,11 +240,13 @@ class _DevicePickerDialogState extends ConsumerState<DevicePickerDialog> {
 class _DeviceItem extends StatelessWidget {
   final models.DeviceInfo device;
   final bool isConnected;
-  final VoidCallback onTap;
+  final bool isConnecting;
+  final VoidCallback? onTap;
 
   const _DeviceItem({
     required this.device,
     required this.isConnected,
+    this.isConnecting = false,
     required this.onTap,
   });
 
@@ -235,15 +254,20 @@ class _DeviceItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final info = _getDeviceTypeInfo(device.name);
-    
+
     final accentColor = isDark ? DarkColors.accent : LightColors.primary;
     final greenColor = isDark ? DarkColors.green : LightColors.success;
+    final orangeColor = isDark ? DarkColors.orange : const Color(0xFFF97316);
     final onSurface = isDark ? DarkColors.text : LightColors.text;
     final onSurfaceVariant = isDark ? DarkColors.text2 : LightColors.text2;
     final surfaceVariant = isDark ? DarkColors.bg3 : LightColors.bg2;
-    
-    final bgColor = isConnected ? greenColor.withOpacity(0.08) : Colors.transparent;
-    final borderColor = isConnected ? greenColor : Colors.transparent;
+
+    final bgColor = isConnected ? greenColor.withOpacity(0.08)
+        : isConnecting ? orangeColor.withOpacity(0.08)
+        : Colors.transparent;
+    final borderColor = isConnected ? greenColor
+        : isConnecting ? orangeColor
+        : Colors.transparent;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -301,7 +325,23 @@ class _DeviceItem extends StatelessWidget {
                 ),
               ),
               // Status Badge
-              if (isConnected)
+              if (isConnecting)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(orangeColor),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _StatusBadge(label: 'Connecting...', color: orangeColor),
+                  ],
+                )
+              else if (isConnected)
                 _StatusBadge(label: context.s('conn_connected'), color: greenColor)
               else
                 _StatusBadge(label: context.s('conn_paired'), color: accentColor),

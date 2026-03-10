@@ -38,8 +38,14 @@ class ShortcutKey {
   /// 显示位置顺序
   final int position;
 
-  /// 所属配置文件 ID
-  final String profile;
+  /// 所属平台: 'windows' 或 'macos'
+  final String platform;
+
+  /// 所属应用面板: 'global', 'vscode', 'photoshop', 'browser' 等
+  final String app;
+
+  /// 兼容旧数据的 profile 字段（仅用于数据迁移）
+  final String? legacyProfile;
 
   const ShortcutKey({
     required this.id,
@@ -48,27 +54,43 @@ class ShortcutKey {
     this.modifiers = 0,
     this.keyCode = 0,
     this.position = 0,
-    this.profile = 'global',
+    this.platform = 'windows',
+    this.app = 'global',
+    this.legacyProfile,
   });
 
   /// 获取修饰键的显示名称
-  /// 例如: Ctrl+Shift
-  String get modifierDisplayName {
+  /// 根据 platform 参数决定显示格式
+  String modifierDisplayNameFor(String platform) {
     final List<String> mods = [];
-    if (modifiers & HidModifiers.leftCtrl != 0) mods.add('Ctrl');
-    if (modifiers & HidModifiers.leftShift != 0) mods.add('Shift');
-    if (modifiers & HidModifiers.leftAlt != 0) mods.add('Alt');
-    if (modifiers & HidModifiers.leftGui != 0) mods.add('Cmd');
+    final isMac = platform == 'macos';
+
+    if (modifiers & HidModifiers.leftGui != 0) {
+      mods.add(isMac ? '⌘' : 'Win');
+    }
+    if (modifiers & HidModifiers.leftCtrl != 0) {
+      mods.add(isMac ? '⌘' : 'Ctrl');
+    }
+    if (modifiers & HidModifiers.leftAlt != 0) {
+      mods.add(isMac ? '⌥' : 'Alt');
+    }
+    if (modifiers & HidModifiers.leftShift != 0) {
+      mods.add('⇧');
+    }
     return mods.join('+');
   }
 
   /// 获取完整快捷键显示名称
-  /// 例如: Ctrl+C
-  String get fullDisplayName {
-    final modName = modifierDisplayName;
+  /// 例如: Ctrl+C 或 ⌘+C
+  String fullDisplayNameFor(String platform) {
+    final modName = modifierDisplayNameFor(platform);
     final keyName = _getKeyName(keyCode);
     return modName.isEmpty ? keyName : '$modName+$keyName';
   }
+
+  /// 默认使用自身 platform 显示
+  String get modifierDisplayName => modifierDisplayNameFor(platform);
+  String get fullDisplayName => fullDisplayNameFor(platform);
 
   /// 根据 HID 键码获取键名
   static String _getKeyName(int code) {
@@ -104,7 +126,9 @@ class ShortcutKey {
     int? modifiers,
     int? keyCode,
     int? position,
-    String? profile,
+    String? platform,
+    String? app,
+    String? legacyProfile,
   }) {
     return ShortcutKey(
       id: id ?? this.id,
@@ -113,12 +137,37 @@ class ShortcutKey {
       modifiers: modifiers ?? this.modifiers,
       keyCode: keyCode ?? this.keyCode,
       position: position ?? this.position,
-      profile: profile ?? this.profile,
+      platform: platform ?? this.platform,
+      app: app ?? this.app,
+      legacyProfile: legacyProfile ?? this.legacyProfile,
     );
   }
 
   /// 从 JSON 反序列化
   factory ShortcutKey.fromJson(Map<String, dynamic> json) {
+    // 数据迁移：从旧的 profile 字段提取 platform 和 app
+    String platform = json['platform'] as String? ?? 'windows';
+    String app = json['app'] as String? ?? 'global';
+    final legacyProfile = json['profile'] as String?;
+
+    // 如果有旧的 profile 字段，尝试迁移
+    if (legacyProfile != null && json['platform'] == null) {
+      if (legacyProfile == 'windows' || legacyProfile == 'macos') {
+        // 旧的系统 profile，映射为 global
+        platform = legacyProfile;
+        app = 'global';
+      } else if (legacyProfile.startsWith('win_')) {
+        platform = 'windows';
+        app = legacyProfile.substring(4);
+      } else if (legacyProfile.startsWith('mac_')) {
+        platform = 'macos';
+        app = legacyProfile.substring(4);
+      } else {
+        // 其他 profile（vscode, photoshop 等）默认为 windows
+        app = legacyProfile;
+      }
+    }
+
     return ShortcutKey(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -126,7 +175,9 @@ class ShortcutKey {
       modifiers: json['modifiers'] as int? ?? 0,
       keyCode: json['keyCode'] as int? ?? 0,
       position: json['position'] as int? ?? 0,
-      profile: json['profile'] as String? ?? 'global',
+      platform: platform,
+      app: app,
+      legacyProfile: legacyProfile,
     );
   }
 
@@ -139,243 +190,175 @@ class ShortcutKey {
       'modifiers': modifiers,
       'keyCode': keyCode,
       'position': position,
-      'profile': profile,
+      'platform': platform,
+      'app': app,
     };
   }
 
   /// 获取默认快捷键列表
-  /// [platform] 平台类型: 'windows' 或 'macos'
-  static List<ShortcutKey> getDefaults({String platform = 'windows'}) {
-    // Windows 用 Ctrl，macOS 用 Cmd (leftGui)
-    final int cmdMod = platform == 'macos' ? HidModifiers.leftGui : HidModifiers.leftCtrl;
+  /// 包含 Windows 和 macOS 两个平台的所有快捷键
+  static List<ShortcutKey> getDefaults() {
+    final List<ShortcutKey> shortcuts = [];
 
+    // ==================== Windows 平台 ====================
+    // Windows 全局快捷键
+    shortcuts.addAll(_getWindowsGlobalShortcuts());
+    // Windows VSCode 快捷键
+    shortcuts.addAll(_getWindowsVscodeShortcuts());
+    // Windows Photoshop 快捷键
+    shortcuts.addAll(_getWindowsPhotoshopShortcuts());
+    // Windows 浏览器快捷键
+    shortcuts.addAll(_getWindowsBrowserShortcuts());
+
+    // ==================== macOS 平台 ====================
+    // macOS 全局快捷键
+    shortcuts.addAll(_getMacosGlobalShortcuts());
+    // macOS VSCode 快捷键
+    shortcuts.addAll(_getMacosVscodeShortcuts());
+    // macOS Photoshop 快捷键
+    shortcuts.addAll(_getMacosPhotoshopShortcuts());
+    // macOS 浏览器快捷键
+    shortcuts.addAll(_getMacosBrowserShortcuts());
+
+    return shortcuts;
+  }
+
+  // ==================== Windows 快捷键 ====================
+
+  static List<ShortcutKey> _getWindowsGlobalShortcuts() {
+    const cmd = HidModifiers.leftCtrl;
     return [
-      // === 系统全局快捷键 ===
-      ShortcutKey(
-        id: '${platform}_copy',
-        name: '复制',
-        icon: '📋',
-        modifiers: cmdMod,
-        keyCode: 0x06, // C
-        position: 0,
-        profile: platform,
-      ),
-      ShortcutKey(
-        id: '${platform}_paste',
-        name: '粘贴',
-        icon: '📄',
-        modifiers: cmdMod,
-        keyCode: 0x19, // V
-        position: 1,
-        profile: platform,
-      ),
-      ShortcutKey(
-        id: '${platform}_undo',
-        name: '撤销',
-        icon: '↩️',
-        modifiers: cmdMod,
-        keyCode: 0x1D, // Z
-        position: 2,
-        profile: platform,
-      ),
-      ShortcutKey(
-        id: '${platform}_redo',
-        name: '重做',
-        icon: '🔄',
-        modifiers: cmdMod | HidModifiers.leftShift,
-        keyCode: 0x1D, // Z
-        position: 3,
-        profile: platform,
-      ),
-      ShortcutKey(
-        id: '${platform}_cut',
-        name: '剪切',
-        icon: '✂️',
-        modifiers: cmdMod,
-        keyCode: 0x1B, // X
-        position: 4,
-        profile: platform,
-      ),
-      ShortcutKey(
-        id: '${platform}_selectall',
-        name: '全选',
-        icon: '☑️',
-        modifiers: cmdMod,
-        keyCode: 0x04, // A
-        position: 5,
-        profile: platform,
-      ),
-      ShortcutKey(
-        id: '${platform}_find',
-        name: '查找',
-        icon: '🔍',
-        modifiers: cmdMod,
-        keyCode: 0x09, // F
-        position: 6,
-        profile: platform,
-      ),
-      ShortcutKey(
-        id: '${platform}_desktop',
-        name: '显示桌面',
-        icon: '🖥️',
-        modifiers: HidModifiers.leftGui,
-        keyCode: 0x07, // D
-        position: 7,
-        profile: platform,
-      ),
-      // === VSCode 快捷键 ===
-      ShortcutKey(
-        id: 'vscode_save',
-        name: '保存',
-        icon: '💾',
-        modifiers: cmdMod,
-        keyCode: 0x16, // S
-        position: 0,
-        profile: 'vscode',
-      ),
-      ShortcutKey(
-        id: 'vscode_find',
-        name: '查找',
-        icon: '🔍',
-        modifiers: cmdMod,
-        keyCode: 0x09, // F
-        position: 1,
-        profile: 'vscode',
-      ),
-      ShortcutKey(
-        id: 'vscode_replace',
-        name: '替换',
-        icon: '🔁',
-        modifiers: cmdMod,
-        keyCode: 0x14, // H
-        position: 2,
-        profile: 'vscode',
-      ),
-      ShortcutKey(
-        id: 'vscode_goto',
-        name: '跳转行',
-        icon: '➡️',
-        modifiers: cmdMod,
-        keyCode: 0x0B, // G
-        position: 3,
-        profile: 'vscode',
-      ),
-      ShortcutKey(
-        id: 'vscode_terminal',
-        name: '终端',
-        icon: '💻',
-        modifiers: cmdMod | HidModifiers.leftShift,
-        keyCode: 0x19, // V (grave)
-        position: 4,
-        profile: 'vscode',
-      ),
-      ShortcutKey(
-        id: 'vscode_comment',
-        name: '注释',
-        icon: '💬',
-        modifiers: cmdMod,
-        keyCode: 0x2F, // /
-        position: 5,
-        profile: 'vscode',
-      ),
-      // === Photoshop 快捷键 ===
-      ShortcutKey(
-        id: 'ps_save',
-        name: '保存',
-        icon: '💾',
-        modifiers: cmdMod,
-        keyCode: 0x16, // S
-        position: 0,
-        profile: 'photoshop',
-      ),
-      ShortcutKey(
-        id: 'ps_undo',
-        name: '撤销',
-        icon: '↩️',
-        modifiers: cmdMod,
-        keyCode: 0x1D, // Z
-        position: 1,
-        profile: 'photoshop',
-      ),
-      ShortcutKey(
-        id: 'ps_redo',
-        name: '重做',
-        icon: '🔄',
-        modifiers: cmdMod | HidModifiers.leftShift,
-        keyCode: 0x1D, // Z
-        position: 2,
-        profile: 'photoshop',
-      ),
-      ShortcutKey(
-        id: 'ps_deselect',
-        name: '取消选择',
-        icon: '⬜',
-        modifiers: cmdMod,
-        keyCode: 0x0E, // K (grave on US layout, use D for deselect)
-        position: 3,
-        profile: 'photoshop',
-      ),
-      ShortcutKey(
-        id: 'ps_freeTransform',
-        name: '自由变换',
-        icon: '🔲',
-        modifiers: cmdMod,
-        keyCode: 0x11, // N (T key is 0x17)
-        position: 4,
-        profile: 'photoshop',
-      ),
-      // === 浏览器快捷键 ===
-      ShortcutKey(
-        id: 'browser_refresh',
-        name: '刷新',
-        icon: '🔄',
-        modifiers: cmdMod,
-        keyCode: 0x15, // R
-        position: 0,
-        profile: 'browser',
-      ),
-      ShortcutKey(
-        id: 'browser_newTab',
-        name: '新标签页',
-        icon: '➕',
-        modifiers: cmdMod,
-        keyCode: 0x17, // T
-        position: 1,
-        profile: 'browser',
-      ),
-      ShortcutKey(
-        id: 'browser_closeTab',
-        name: '关闭标签',
-        icon: '❌',
-        modifiers: cmdMod,
-        keyCode: 0x1B, // X (W is 0x1A)
-        position: 2,
-        profile: 'browser',
-      ),
-      ShortcutKey(
-        id: 'browser_devTools',
-        name: '开发者工具',
-        icon: '🛠️',
-        modifiers: cmdMod | HidModifiers.leftShift,
-        keyCode: 0x0E, // K (I is 0x0C)
-        position: 3,
-        profile: 'browser',
-      ),
-      ShortcutKey(
-        id: 'browser_find',
-        name: '页面查找',
-        icon: '🔍',
-        modifiers: cmdMod,
-        keyCode: 0x09, // F
-        position: 4,
-        profile: 'browser',
-      ),
+      ShortcutKey(id: 'win_global_copy', name: '复制', icon: '📋', modifiers: cmd, keyCode: 0x06, position: 0, platform: 'windows', app: 'global'),
+      ShortcutKey(id: 'win_global_paste', name: '粘贴', icon: '📄', modifiers: cmd, keyCode: 0x19, position: 1, platform: 'windows', app: 'global'),
+      ShortcutKey(id: 'win_global_undo', name: '撤销', icon: '↩️', modifiers: cmd, keyCode: 0x1D, position: 2, platform: 'windows', app: 'global'),
+      ShortcutKey(id: 'win_global_redo', name: '重做', icon: '🔄', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x1D, position: 3, platform: 'windows', app: 'global'),
+      ShortcutKey(id: 'win_global_cut', name: '剪切', icon: '✂️', modifiers: cmd, keyCode: 0x1B, position: 4, platform: 'windows', app: 'global'),
+      ShortcutKey(id: 'win_global_selectall', name: '全选', icon: '☑️', modifiers: cmd, keyCode: 0x04, position: 5, platform: 'windows', app: 'global'),
+      ShortcutKey(id: 'win_global_find', name: '查找', icon: '🔍', modifiers: cmd, keyCode: 0x09, position: 6, platform: 'windows', app: 'global'),
+      ShortcutKey(id: 'win_global_desktop', name: '显示桌面', icon: '🖥️', modifiers: HidModifiers.leftGui, keyCode: 0x07, position: 7, platform: 'windows', app: 'global'),
+      ShortcutKey(id: 'win_global_lock', name: '锁定', icon: '🔒', modifiers: HidModifiers.leftGui, keyCode: 0x13, position: 8, platform: 'windows', app: 'global'),
+      ShortcutKey(id: 'win_global_run', name: '运行', icon: '▶️', modifiers: HidModifiers.leftGui, keyCode: 0x15, position: 9, platform: 'windows', app: 'global'),
+      ShortcutKey(id: 'win_global_explorer', name: '资源管理器', icon: '📁', modifiers: HidModifiers.leftGui, keyCode: 0x08, position: 10, platform: 'windows', app: 'global'),
+    ];
+  }
+
+  static List<ShortcutKey> _getWindowsVscodeShortcuts() {
+    const cmd = HidModifiers.leftCtrl;
+    return [
+      ShortcutKey(id: 'win_vscode_save', name: '保存', icon: '💾', modifiers: cmd, keyCode: 0x16, position: 0, platform: 'windows', app: 'vscode'),
+      ShortcutKey(id: 'win_vscode_saveall', name: '全部保存', icon: '💾', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x16, position: 1, platform: 'windows', app: 'vscode'),
+      ShortcutKey(id: 'win_vscode_find', name: '查找', icon: '🔍', modifiers: cmd, keyCode: 0x09, position: 2, platform: 'windows', app: 'vscode'),
+      ShortcutKey(id: 'win_vscode_replace', name: '替换', icon: '🔁', modifiers: cmd, keyCode: 0x14, position: 3, platform: 'windows', app: 'vscode'),
+      ShortcutKey(id: 'win_vscode_goto', name: '跳转行', icon: '➡️', modifiers: cmd, keyCode: 0x0B, position: 4, platform: 'windows', app: 'vscode'),
+      ShortcutKey(id: 'win_vscode_terminal', name: '终端', icon: '💻', modifiers: cmd, keyCode: 0x35, position: 5, platform: 'windows', app: 'vscode'),
+      ShortcutKey(id: 'win_vscode_comment', name: '注释', icon: '💬', modifiers: cmd, keyCode: 0x38, position: 6, platform: 'windows', app: 'vscode'),
+      ShortcutKey(id: 'win_vscode_format', name: '格式化', icon: '📝', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x0E, position: 7, platform: 'windows', app: 'vscode'),
+      ShortcutKey(id: 'win_vscode_close', name: '关闭编辑器', icon: '❌', modifiers: cmd, keyCode: 0x1B, position: 8, platform: 'windows', app: 'vscode'),
+      ShortcutKey(id: 'win_vscode_newfile', name: '新建文件', icon: '📄', modifiers: cmd, keyCode: 0x11, position: 9, platform: 'windows', app: 'vscode'),
+      ShortcutKey(id: 'win_vscode_multicursor', name: '多光标', icon: '🔀', modifiers: cmd | HidModifiers.leftAlt, keyCode: 0x08, position: 10, platform: 'windows', app: 'vscode'),
+    ];
+  }
+
+  static List<ShortcutKey> _getWindowsPhotoshopShortcuts() {
+    const cmd = HidModifiers.leftCtrl;
+    return [
+      ShortcutKey(id: 'win_ps_save', name: '保存', icon: '💾', modifiers: cmd, keyCode: 0x16, position: 0, platform: 'windows', app: 'photoshop'),
+      ShortcutKey(id: 'win_ps_undo', name: '撤销', icon: '↩️', modifiers: cmd, keyCode: 0x1D, position: 1, platform: 'windows', app: 'photoshop'),
+      ShortcutKey(id: 'win_ps_redo', name: '重做', icon: '🔄', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x1D, position: 2, platform: 'windows', app: 'photoshop'),
+      ShortcutKey(id: 'win_ps_deselect', name: '取消选择', icon: '⬜', modifiers: cmd, keyCode: 0x0E, position: 3, platform: 'windows', app: 'photoshop'),
+      ShortcutKey(id: 'win_ps_transform', name: '自由变换', icon: '🔲', modifiers: cmd, keyCode: 0x11, position: 4, platform: 'windows', app: 'photoshop'),
+      ShortcutKey(id: 'win_ps_inverse', name: '反选', icon: '🔄', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x0E, position: 5, platform: 'windows', app: 'photoshop'),
+      ShortcutKey(id: 'win_ps_levels', name: '色阶', icon: '📊', modifiers: cmd, keyCode: 0x13, position: 6, platform: 'windows', app: 'photoshop'),
+      ShortcutKey(id: 'win_ps_curves', name: '曲线', icon: '📈', modifiers: cmd, keyCode: 0x12, position: 7, platform: 'windows', app: 'photoshop'),
+      ShortcutKey(id: 'win_ps_desaturate', name: '去色', icon: '🎨', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x1A, position: 8, platform: 'windows', app: 'photoshop'),
+    ];
+  }
+
+  static List<ShortcutKey> _getWindowsBrowserShortcuts() {
+    const cmd = HidModifiers.leftCtrl;
+    return [
+      ShortcutKey(id: 'win_browser_refresh', name: '刷新', icon: '🔄', modifiers: cmd, keyCode: 0x15, position: 0, platform: 'windows', app: 'browser'),
+      ShortcutKey(id: 'win_browser_forceRefresh', name: '强制刷新', icon: '🔄', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x15, position: 1, platform: 'windows', app: 'browser'),
+      ShortcutKey(id: 'win_browser_newTab', name: '新标签页', icon: '➕', modifiers: cmd, keyCode: 0x17, position: 2, platform: 'windows', app: 'browser'),
+      ShortcutKey(id: 'win_browser_closeTab', name: '关闭标签', icon: '❌', modifiers: cmd, keyCode: 0x1A, position: 3, platform: 'windows', app: 'browser'),
+      ShortcutKey(id: 'win_browser_reopenTab', name: '恢复标签', icon: '↩️', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x11, position: 4, platform: 'windows', app: 'browser'),
+      ShortcutKey(id: 'win_browser_devTools', name: '开发者工具', icon: '🛠️', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x0E, position: 5, platform: 'windows', app: 'browser'),
+      ShortcutKey(id: 'win_browser_find', name: '页面查找', icon: '🔍', modifiers: cmd, keyCode: 0x09, position: 6, platform: 'windows', app: 'browser'),
+      ShortcutKey(id: 'win_browser_history', name: '历史记录', icon: '📜', modifiers: cmd, keyCode: 0x14, position: 7, platform: 'windows', app: 'browser'),
+      ShortcutKey(id: 'win_browser_downloads', name: '下载', icon: '📥', modifiers: cmd, keyCode: 0x0A, position: 8, platform: 'windows', app: 'browser'),
+    ];
+  }
+
+  // ==================== macOS 快捷键 ====================
+
+  static List<ShortcutKey> _getMacosGlobalShortcuts() {
+    const cmd = HidModifiers.leftGui;  // macOS 用 Cmd 键
+    return [
+      ShortcutKey(id: 'mac_global_copy', name: '复制', icon: '📋', modifiers: cmd, keyCode: 0x06, position: 0, platform: 'macos', app: 'global'),
+      ShortcutKey(id: 'mac_global_paste', name: '粘贴', icon: '📄', modifiers: cmd, keyCode: 0x19, position: 1, platform: 'macos', app: 'global'),
+      ShortcutKey(id: 'mac_global_undo', name: '撤销', icon: '↩️', modifiers: cmd, keyCode: 0x1D, position: 2, platform: 'macos', app: 'global'),
+      ShortcutKey(id: 'mac_global_redo', name: '重做', icon: '🔄', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x1D, position: 3, platform: 'macos', app: 'global'),
+      ShortcutKey(id: 'mac_global_cut', name: '剪切', icon: '✂️', modifiers: cmd, keyCode: 0x1B, position: 4, platform: 'macos', app: 'global'),
+      ShortcutKey(id: 'mac_global_selectall', name: '全选', icon: '☑️', modifiers: cmd, keyCode: 0x04, position: 5, platform: 'macos', app: 'global'),
+      ShortcutKey(id: 'mac_global_find', name: '查找', icon: '🔍', modifiers: cmd, keyCode: 0x09, position: 6, platform: 'macos', app: 'global'),
+      ShortcutKey(id: 'mac_global_desktop', name: '显示桌面', icon: '🖥️', modifiers: cmd, keyCode: 0x07, position: 7, platform: 'macos', app: 'global'),
+      ShortcutKey(id: 'mac_global_lock', name: '锁屏', icon: '🔒', modifiers: cmd | HidModifiers.leftCtrl, keyCode: 0x15, position: 8, platform: 'macos', app: 'global'),
+      ShortcutKey(id: 'mac_global_spotlight', name: 'Spotlight', icon: '🔍', modifiers: cmd, keyCode: 0x2C, position: 9, platform: 'macos', app: 'global'),
+      ShortcutKey(id: 'mac_global_finder', name: 'Finder', icon: '📁', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x04, position: 10, platform: 'macos', app: 'global'),
+    ];
+  }
+
+  static List<ShortcutKey> _getMacosVscodeShortcuts() {
+    const cmd = HidModifiers.leftGui;
+    return [
+      ShortcutKey(id: 'mac_vscode_save', name: '保存', icon: '💾', modifiers: cmd, keyCode: 0x16, position: 0, platform: 'macos', app: 'vscode'),
+      ShortcutKey(id: 'mac_vscode_saveall', name: '全部保存', icon: '💾', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x16, position: 1, platform: 'macos', app: 'vscode'),
+      ShortcutKey(id: 'mac_vscode_find', name: '查找', icon: '🔍', modifiers: cmd, keyCode: 0x09, position: 2, platform: 'macos', app: 'vscode'),
+      ShortcutKey(id: 'mac_vscode_replace', name: '替换', icon: '🔁', modifiers: cmd | HidModifiers.leftAlt, keyCode: 0x09, position: 3, platform: 'macos', app: 'vscode'),
+      ShortcutKey(id: 'mac_vscode_goto', name: '跳转行', icon: '➡️', modifiers: cmd, keyCode: 0x0B, position: 4, platform: 'macos', app: 'vscode'),
+      ShortcutKey(id: 'mac_vscode_terminal', name: '终端', icon: '💻', modifiers: cmd, keyCode: 0x35, position: 5, platform: 'macos', app: 'vscode'),
+      ShortcutKey(id: 'mac_vscode_comment', name: '注释', icon: '💬', modifiers: cmd, keyCode: 0x38, position: 6, platform: 'macos', app: 'vscode'),
+      ShortcutKey(id: 'mac_vscode_format', name: '格式化', icon: '📝', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x0E, position: 7, platform: 'macos', app: 'vscode'),
+      ShortcutKey(id: 'mac_vscode_close', name: '关闭编辑器', icon: '❌', modifiers: cmd, keyCode: 0x1A, position: 8, platform: 'macos', app: 'vscode'),
+      ShortcutKey(id: 'mac_vscode_newfile', name: '新建文件', icon: '📄', modifiers: cmd, keyCode: 0x11, position: 9, platform: 'macos', app: 'vscode'),
+      ShortcutKey(id: 'mac_vscode_multicursor', name: '多光标', icon: '🔀', modifiers: cmd | HidModifiers.leftAlt, keyCode: 0x08, position: 10, platform: 'macos', app: 'vscode'),
+      ShortcutKey(id: 'mac_vscode_command', name: '命令面板', icon: '⌨️', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x0F, position: 11, platform: 'macos', app: 'vscode'),
+    ];
+  }
+
+  static List<ShortcutKey> _getMacosPhotoshopShortcuts() {
+    const cmd = HidModifiers.leftGui;
+    return [
+      ShortcutKey(id: 'mac_ps_save', name: '保存', icon: '💾', modifiers: cmd, keyCode: 0x16, position: 0, platform: 'macos', app: 'photoshop'),
+      ShortcutKey(id: 'mac_ps_undo', name: '撤销', icon: '↩️', modifiers: cmd, keyCode: 0x1D, position: 1, platform: 'macos', app: 'photoshop'),
+      ShortcutKey(id: 'mac_ps_redo', name: '重做', icon: '🔄', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x1D, position: 2, platform: 'macos', app: 'photoshop'),
+      ShortcutKey(id: 'mac_ps_deselect', name: '取消选择', icon: '⬜', modifiers: cmd, keyCode: 0x0E, position: 3, platform: 'macos', app: 'photoshop'),
+      ShortcutKey(id: 'mac_ps_transform', name: '自由变换', icon: '🔲', modifiers: cmd, keyCode: 0x11, position: 4, platform: 'macos', app: 'photoshop'),
+      ShortcutKey(id: 'mac_ps_inverse', name: '反选', icon: '🔄', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x0E, position: 5, platform: 'macos', app: 'photoshop'),
+      ShortcutKey(id: 'mac_ps_levels', name: '色阶', icon: '📊', modifiers: cmd, keyCode: 0x13, position: 6, platform: 'macos', app: 'photoshop'),
+      ShortcutKey(id: 'mac_ps_curves', name: '曲线', icon: '📈', modifiers: cmd, keyCode: 0x12, position: 7, platform: 'macos', app: 'photoshop'),
+      ShortcutKey(id: 'mac_ps_desaturate', name: '去色', icon: '🎨', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x1A, position: 8, platform: 'macos', app: 'photoshop'),
+    ];
+  }
+
+  static List<ShortcutKey> _getMacosBrowserShortcuts() {
+    const cmd = HidModifiers.leftGui;
+    return [
+      ShortcutKey(id: 'mac_browser_refresh', name: '刷新', icon: '🔄', modifiers: cmd, keyCode: 0x15, position: 0, platform: 'macos', app: 'browser'),
+      ShortcutKey(id: 'mac_browser_forceRefresh', name: '强制刷新', icon: '🔄', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x15, position: 1, platform: 'macos', app: 'browser'),
+      ShortcutKey(id: 'mac_browser_newTab', name: '新标签页', icon: '➕', modifiers: cmd, keyCode: 0x17, position: 2, platform: 'macos', app: 'browser'),
+      ShortcutKey(id: 'mac_browser_closeTab', name: '关闭标签', icon: '❌', modifiers: cmd, keyCode: 0x1A, position: 3, platform: 'macos', app: 'browser'),
+      ShortcutKey(id: 'mac_browser_reopenTab', name: '恢复标签', icon: '↩️', modifiers: cmd | HidModifiers.leftShift, keyCode: 0x11, position: 4, platform: 'macos', app: 'browser'),
+      ShortcutKey(id: 'mac_browser_devTools', name: '开发者工具', icon: '🛠️', modifiers: cmd | HidModifiers.leftAlt, keyCode: 0x0E, position: 5, platform: 'macos', app: 'browser'),
+      ShortcutKey(id: 'mac_browser_find', name: '页面查找', icon: '🔍', modifiers: cmd, keyCode: 0x09, position: 6, platform: 'macos', app: 'browser'),
+      ShortcutKey(id: 'mac_browser_history', name: '历史记录', icon: '📜', modifiers: cmd, keyCode: 0x14, position: 7, platform: 'macos', app: 'browser'),
+      ShortcutKey(id: 'mac_browser_downloads', name: '下载', icon: '📥', modifiers: cmd | HidModifiers.leftAlt, keyCode: 0x0A, position: 8, platform: 'macos', app: 'browser'),
     ];
   }
 
   @override
   String toString() {
-    return 'ShortcutKey(id: $id, name: $name, key: $fullDisplayName)';
+    return 'ShortcutKey(id: $id, name: $name, platform: $platform, app: $app)';
   }
 
   @override
