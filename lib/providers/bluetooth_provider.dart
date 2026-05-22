@@ -229,11 +229,13 @@ class BluetoothActions {
   // ==================== HID 报告发送 ====================
 
   void sendMouseMove(double dx, double dy, {int buttons = 0}) {
-    _service.sendMouseReport(buttons: buttons, dx: dx.toInt(), dy: dy.toInt());
+    // 由 touchpad_area 的累加器保证传入的 dx/dy 已经经过 truncate 截断
+    // 此处直接强制转 int 即可，不再用 toInt() 避免 floor 精度丢失
+    _service.sendMouseReport(buttons: buttons, dx: dx.round(), dy: dy.round());
   }
 
   void sendScroll(double vertical, {double horizontal = 0}) {
-    _service.sendMouseReport(wheel: vertical.toInt(), hWheel: horizontal.toInt());
+    _service.sendMouseReport(wheel: vertical.round(), hWheel: horizontal.round());
   }
 
   Future<bool> sendKeyPress(int modifiers, List<int> keyCodes) async {
