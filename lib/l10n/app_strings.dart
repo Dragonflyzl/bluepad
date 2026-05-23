@@ -10,23 +10,23 @@ class AppStrings {
       'nav_shortcuts': '快捷键',
       'nav_clipboard': '剪贴板',
       'nav_settings': '设置',
-      
+
       'conn_no_device': '未连接设备',
       'conn_tap_to_connect': '点击连接设备',
       'conn_connected': '已连接',
       'conn_paired': '已配对',
-      
+
       'touch_mouse_left': '左键',
       'touch_mouse_mid': '中键',
       'touch_mouse_right': '右键',
       'touch_hint': '滑动控制鼠标',
-      
+
       'kb_mode_abc': 'ABC',
       'kb_mode_123': '123',
       'kb_mode_sym': 'Sym',
       'kb_mode_fn': 'Fn',
       'kb_mode_nav': 'Nav',
-      
+
       'sc_panel_title': '快捷键面板',
       'sc_items': '项',
       'sc_no_shortcuts': '暂无快捷键',
@@ -37,7 +37,35 @@ class AppStrings {
       'sc_media_prev': '上一首',
       'sc_media_play': '播放/暂停',
       'sc_media_next': '下一首',
-      
+      'sc_add_shortcut_btn': '添加快捷键',
+      'sc_edit': '编辑',
+      'sc_delete': '删除',
+      'sc_cancel': '取消',
+      'sc_reset_default': '恢复默认',
+      'sc_reset_all_tooltip': '恢复所有默认',
+      'sc_reset_all_title': '恢复所有默认',
+      'sc_reset_all_confirm': '确定要将所有快捷键和面板恢复为出厂默认配置吗？\n\n所有自定义面板、已删除的默认面板（如抖音）以及自定义快捷键都将被重置。',
+      'sc_reset_title': '恢复默认',
+      'sc_reset_confirm': '确定要将当前面板的快捷键恢复为默认配置吗？自定义的快捷键将被清除。',
+      'sc_delete_panel_title': '删除面板',
+      'sc_delete_panel_confirm': '确定要删除「{name}」面板及其所有快捷键吗？',
+      'sc_add_panel_title': '添加软件面板',
+      'sc_panel_name': '面板名称',
+      'sc_panel_icon': '图标 (emoji)',
+      'sc_confirm_add': '添加',
+
+      'dy_up': '下一个视频',
+      'dy_down': '上一个视频',
+      'dy_left': '后退',
+      'dy_right': '快进',
+      'dy_hint': '单击暂停/播放 · 滑动切换 · 震动反馈',
+      'dy_follow': '关注',
+      'dy_like': '喜欢',
+      'dy_comment': '评论',
+      'dy_key_g': 'G',
+      'dy_key_z': 'Z',
+      'dy_key_x': 'X',
+
       'air_mouse_mode': '空中鼠标模式',
       'air_mouse_off_hint': '空中鼠标已关闭',
       'air_mouse_moving': '正在移动',
@@ -47,7 +75,7 @@ class AppStrings {
       'air_mouse_right_btn': '右键',
       'air_mouse_sensitivity': '灵敏度',
       'air_mouse_bottom_hint': '提示：按住中心区域并移动手机。双击可执行双击操作。',
-      
+
       'cb_search_placeholder': '搜索剪贴板历史记录...',
       'cb_auto_sync': '自动同步',
       'cb_sensitive_filter': '敏感内容过滤',
@@ -63,7 +91,7 @@ class AppStrings {
       'cb_tab_favorites': '收藏',
       'cb_save_history': '保存历史',
       'cb_save_history_desc': '保存剪贴板历史记录',
-      
+
       'settings_group_touchpad': '触控板设置',
       'settings_sensitivity': '触摸灵敏度',
       'settings_scroll_speed': '滚动灵敏度',
@@ -87,11 +115,11 @@ class AppStrings {
       'settings_group_general': '通用设置',
       'settings_language': '应用语言',
       'settings_theme': '主题模式',
-      
+
       'theme_light': '浅色模式',
       'theme_dark': '深色模式',
       'theme_auto': '跟随系统',
-      
+
       'device_select_title': '选择设备',
       'device_refresh': '刷新',
       'device_close': '关闭',
@@ -107,23 +135,23 @@ class AppStrings {
       'nav_shortcuts': 'Shortcuts',
       'nav_clipboard': 'Clipboard',
       'nav_settings': 'Settings',
-      
+
       'conn_no_device': 'No Device Connected',
       'conn_tap_to_connect': 'Tap to Connect',
       'conn_connected': 'Connected',
       'conn_paired': 'Paired',
-      
+
       'touch_mouse_left': 'Left',
       'touch_mouse_mid': 'Middle',
       'touch_mouse_right': 'Right',
       'touch_hint': 'Slide to control mouse',
-      
+
       'kb_mode_abc': 'ABC',
       'kb_mode_123': '123',
       'kb_mode_sym': 'Sym',
       'kb_mode_fn': 'Fn',
       'kb_mode_nav': 'Nav',
-      
+
       'sc_panel_title': 'Shortcuts Panel',
       'sc_items': 'items',
       'sc_no_shortcuts': 'No shortcuts',
@@ -134,7 +162,35 @@ class AppStrings {
       'sc_media_prev': 'Prev',
       'sc_media_play': 'Play/Pause',
       'sc_media_next': 'Next',
-      
+      'sc_add_shortcut_btn': 'Add Shortcut',
+      'sc_edit': 'Edit',
+      'sc_delete': 'Delete',
+      'sc_cancel': 'Cancel',
+      'sc_reset_default': 'Reset Defaults',
+      'sc_reset_all_tooltip': 'Reset All Defaults',
+      'sc_reset_all_title': 'Reset All Defaults',
+      'sc_reset_all_confirm': 'Reset all shortcuts and panels to factory defaults?\n\nAll custom panels, deleted default panels (e.g. Douyin), and custom shortcuts will be reset.',
+      'sc_reset_title': 'Reset Defaults',
+      'sc_reset_confirm': 'Reset current panel shortcuts to defaults? All custom shortcuts will be cleared.',
+      'sc_delete_panel_title': 'Delete Panel',
+      'sc_delete_panel_confirm': 'Delete panel "{name}" and all its shortcuts?',
+      'sc_add_panel_title': 'Add App Panel',
+      'sc_panel_name': 'Panel Name',
+      'sc_panel_icon': 'Icon (emoji)',
+      'sc_confirm_add': 'Add',
+
+      'dy_up': 'Next Video',
+      'dy_down': 'Prev Video',
+      'dy_left': 'Back',
+      'dy_right': 'Forward',
+      'dy_hint': 'Tap: Play/Pause · Swipe: Navigate · Haptic',
+      'dy_follow': 'Follow',
+      'dy_like': 'Like',
+      'dy_comment': 'Comment',
+      'dy_key_g': 'G',
+      'dy_key_z': 'Z',
+      'dy_key_x': 'X',
+
       'air_mouse_mode': 'Air Mouse Mode',
       'air_mouse_off_hint': 'Air Mouse is Off',
       'air_mouse_moving': 'Moving',
@@ -144,7 +200,7 @@ class AppStrings {
       'air_mouse_right_btn': 'Right Click',
       'air_mouse_sensitivity': 'Sensitivity',
       'air_mouse_bottom_hint': 'Hint: Hold center and move phone. Double tap to double click.',
-      
+
       'cb_search_placeholder': 'Search history...',
       'cb_auto_sync': 'Auto Sync',
       'cb_sensitive_filter': 'Sensitive Filter',
@@ -184,11 +240,11 @@ class AppStrings {
       'settings_group_general': 'General Settings',
       'settings_language': 'App Language',
       'settings_theme': 'Theme Mode',
-      
+
       'theme_light': 'Light Mode',
       'theme_dark': 'Dark Mode',
       'theme_auto': 'Follow System',
-      
+
       'device_select_title': 'Select Device',
       'device_refresh': 'Refresh',
       'device_close': 'Close',

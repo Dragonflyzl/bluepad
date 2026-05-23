@@ -5,6 +5,7 @@ import '../models/shortcut_profile.dart';
 import '../providers/bluetooth_provider.dart';
 import '../providers/shortcut_provider.dart';
 import '../widgets/shortcut_edit_dialog.dart';
+import '../widgets/douyin_panel.dart';
 import '../theme/app_colors.dart';
 import '../utils/l10n_utils.dart';
 
@@ -64,44 +65,91 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
         // 系统 Tab 栏
         _buildSystemTabBar(context, isDark),
 
-        // 软件面板选择器
-        _buildAppPanelSelector(context, appPanels, currentApp, isDark, panelsNotifier),
-
-        // 快捷键网格标题
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
-            children: [
-              Text(
-                context.s('sc_panel_title'),
-                style: TextStyle(
-                  color: onSurfaceVariant,
-                  fontSize: 10,
-                  fontFamily: 'monospace',
-                  letterSpacing: 1.5,
+        // 软件面板选择器（含恢复全部按钮）
+        Row(
+          children: [
+            Expanded(
+              child: _buildAppPanelSelector(context, appPanels, currentApp, isDark, panelsNotifier),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 12, top: 8),
+              child: Tooltip(
+                message: context.s('sc_reset_all_tooltip'),
+                child: InkWell(
+                  onTap: () => _showResetAllDefaultsDialog(shortcutsNotifier, panelsNotifier),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isDark ? DarkColors.bg3 : LightColors.bg3,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: isDark ? DarkColors.border : LightColors.border),
+                    ),
+                    child: Icon(
+                      Icons.restore_outlined,
+                      size: 18,
+                      color: onSurfaceVariant,
+                    ),
+                  ),
                 ),
               ),
-              const Spacer(),
-              Text(
-                '${shortcuts.length} ${context.s('sc_items')}',
-                style: TextStyle(
-          color: onSurfaceVariant.withValues(alpha: 0.6),
-                  fontSize: 10,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
 
-        // 快捷键网格
+        // 内容区域：抖音面板 或 普通快捷键
         Expanded(
-          child: shortcuts.isEmpty
-              ? _buildEmptyState(context, isDark)
-              : _buildShortcutsGrid(context, shortcuts, currentSystem, actions, shortcutsNotifier, isDark),
-        ),
+          child: currentApp == 'douyin'
+              ? DouyinPanel(actions: actions, isDark: isDark)
+              : Column(
+                  children: [
+                    // 快捷键网格标题（含恢复默认按钮）
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: Row(
+                        children: [
+                          Text(
+                            context.s('sc_panel_title'),
+                            style: TextStyle(
+                              color: onSurfaceVariant,
+                              fontSize: 10,
+                              fontFamily: 'monospace',
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const Spacer(),
+                          InkWell(
+                            onTap: () => _showResetDefaultsDialog(shortcutsNotifier, currentApp),
+                            borderRadius: BorderRadius.circular(6),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Icon(Icons.refresh, size: 16, color: onSurfaceVariant.withValues(alpha: 0.6)),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${shortcuts.length} ${context.s('sc_items')}',
+                            style: TextStyle(
+                              color: onSurfaceVariant.withValues(alpha: 0.6),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
-        // 媒体控制
-        _buildMediaControl(context, actions, isDark, onSurfaceVariant),
+                    // 快捷键网格
+                    Expanded(
+                      child: shortcuts.isEmpty
+                          ? _buildEmptyState(context, isDark, shortcutsNotifier)
+                          : _buildShortcutsGrid(context, shortcuts, currentSystem, actions, shortcutsNotifier, isDark),
+                    ),
+
+                    // 媒体控制
+                    _buildMediaControl(context, actions, isDark, onSurfaceVariant),
+                  ],
+                ),
+        ),
       ],
     );
   }
@@ -162,6 +210,7 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
               panel: panel,
               isSelected: isSelected,
               onTap: () => ref.read(currentAppProvider.notifier).state = panel.id,
+              onLongPress: panel.id == 'global' ? null : () => _showDeletePanelDialog(panel, panelsNotifier),
             );
           } else {
             return _AddPanelBtn(
@@ -174,8 +223,9 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
   }
 
   /// 构建空状态
-  Widget _buildEmptyState(BuildContext context, bool isDark) {
+  Widget _buildEmptyState(BuildContext context, bool isDark, ShortcutsNotifier shortcutsNotifier) {
     final textColor = isDark ? DarkColors.text2 : LightColors.text2;
+    final accentColor = isDark ? DarkColors.accent : LightColors.primary;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -185,6 +235,20 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
           Text(
             context.s('sc_no_shortcuts'),
             style: TextStyle(color: textColor.withValues(alpha: 0.5)),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: () => _showAddShortcutDialog(shortcutsNotifier),
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(context.s('sc_add_shortcut_btn')),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: accentColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
           ),
         ],
       ),
@@ -268,7 +332,6 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
 
   /// 发送快捷键
   void _sendShortcut(BluetoothActions actions, ShortcutKey shortcut, String currentSystem) {
-    // 直接使用快捷键的修饰键发送
     actions.sendKeyPress(shortcut.modifiers, [shortcut.keyCode]);
   }
 
@@ -290,14 +353,13 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
     await showModalBottomSheet(
       context: context,
       builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
                 leading: const Icon(Icons.edit),
-                title: const Text('编辑'),
+                title: Text(context.s('sc_edit')),
                 onTap: () {
                   Navigator.pop(context);
                   final currentSystem = ref.read(currentSystemProvider);
@@ -313,7 +375,7 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
               ),
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('删除', style: TextStyle(color: Colors.red)),
+                title: Text(context.s('sc_delete'), style: TextStyle(color: Colors.red)),
                 onTap: () {
                   Navigator.pop(context);
                   DeleteConfirmationDialog.show(
@@ -325,11 +387,126 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
               ),
               ListTile(
                 leading: const Icon(Icons.cancel),
-                title: const Text('取消'),
+                title: Text(context.s('sc_cancel')),
                 onTap: () => Navigator.pop(context),
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  /// 显示恢复所有默认确认对话框（重置快捷键 + 面板）
+  void _showResetAllDefaultsDialog(ShortcutsNotifier shortcutsNotifier, AppPanelsNotifier panelsNotifier) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bgColor = isDark ? DarkColors.bg1 : LightColors.bg1;
+        final textColor = isDark ? DarkColors.text : LightColors.text;
+
+        return AlertDialog(
+          backgroundColor: bgColor,
+          title: Text(context.s('sc_reset_all_title'), style: TextStyle(color: textColor)),
+          content: Text(
+            context.s('sc_reset_all_confirm'),
+            style: TextStyle(color: textColor.withValues(alpha: 0.8)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.s('sc_cancel')),
+            ),
+            TextButton(
+              onPressed: () {
+                shortcutsNotifier.resetToDefaults();
+                panelsNotifier.resetToDefaults();
+                ref.read(currentAppProvider.notifier).state = 'global';
+                Navigator.pop(context);
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: Text(context.s('sc_reset_default'), style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// 显示删除面板确认对话框
+  void _showDeletePanelDialog(AppPanel panel, AppPanelsNotifier notifier) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bgColor = isDark ? DarkColors.bg1 : LightColors.bg1;
+        final textColor = isDark ? DarkColors.text : LightColors.text;
+
+        return AlertDialog(
+          backgroundColor: bgColor,
+          title: Text(context.s('sc_delete_panel_title'), style: TextStyle(color: textColor)),
+          content: Text(
+            context.s('sc_delete_panel_confirm').replaceAll('{name}', '${panel.icon} ${panel.name}'),
+            style: TextStyle(color: textColor.withValues(alpha: 0.8)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.s('sc_cancel')),
+            ),
+            TextButton(
+              onPressed: () {
+                final shortcutsNotifier = ref.read(shortcutsProvider.notifier);
+                final shortcuts = ref.read(shortcutsProvider);
+                for (final s in shortcuts.where((s) => s.app == panel.id)) {
+                  shortcutsNotifier.deleteShortcut(s.id);
+                }
+                notifier.deletePanel(panel.id);
+                if (ref.read(currentAppProvider) == panel.id) {
+                  ref.read(currentAppProvider.notifier).state = 'global';
+                }
+                Navigator.pop(context);
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: Text(context.s('sc_delete'), style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// 显示恢复默认快捷键确认对话框
+  void _showResetDefaultsDialog(ShortcutsNotifier notifier, String currentApp) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bgColor = isDark ? DarkColors.bg1 : LightColors.bg1;
+        final textColor = isDark ? DarkColors.text : LightColors.text;
+
+        return AlertDialog(
+          backgroundColor: bgColor,
+          title: Text(context.s('sc_reset_title'), style: TextStyle(color: textColor)),
+          content: Text(
+            context.s('sc_reset_confirm'),
+            style: TextStyle(color: textColor.withValues(alpha: 0.8)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.s('sc_cancel')),
+            ),
+            TextButton(
+              onPressed: () {
+                notifier.resetToDefaults();
+                Navigator.pop(context);
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: Text(context.s('sc_reset_default'), style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ],
         );
       },
     );
@@ -352,7 +529,7 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
 
         return AlertDialog(
           backgroundColor: bgColor,
-          title: Text('添加软件面板', style: TextStyle(color: textColor)),
+          title: Text(context.s('sc_add_panel_title'), style: TextStyle(color: textColor)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -360,7 +537,7 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
                 controller: nameController,
                 style: TextStyle(color: textColor),
                 decoration: InputDecoration(
-                  labelText: '面板名称',
+                  labelText: context.s('sc_panel_name'),
                   labelStyle: TextStyle(color: hintColor),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: borderColor),
@@ -372,7 +549,7 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
                 controller: iconController,
                 style: TextStyle(color: textColor),
                 decoration: InputDecoration(
-                  labelText: '图标 (emoji)',
+                  labelText: context.s('sc_panel_icon'),
                   labelStyle: TextStyle(color: hintColor),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: borderColor),
@@ -384,7 +561,7 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('取消', style: TextStyle(color: hintColor)),
+              child: Text(context.s('sc_cancel'), style: TextStyle(color: hintColor)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -399,7 +576,7 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(backgroundColor: accentColor),
-              child: const Text('添加', style: TextStyle(color: Colors.white)),
+              child: Text(context.s('sc_confirm_add'), style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -413,8 +590,14 @@ class _AppPanelChip extends StatelessWidget {
   final AppPanel panel;
   final bool isSelected;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
-  const _AppPanelChip({required this.panel, required this.isSelected, required this.onTap});
+  const _AppPanelChip({
+    required this.panel,
+    required this.isSelected,
+    required this.onTap,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -425,6 +608,7 @@ class _AppPanelChip extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(

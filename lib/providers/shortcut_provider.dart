@@ -105,11 +105,9 @@ class AppPanelsNotifier extends StateNotifier<List<AppPanel>> {
     await _service.setAppPanels(state);
   }
 
-  /// 删除面板
+  /// 删除面板（保留 global 面板不可删除）
   Future<void> deletePanel(String id) async {
-    // 不允许删除内置面板
-    final panel = state.firstWhere((p) => p.id == id, orElse: () => state.first);
-    if (panel.isBuiltIn) return;
+    if (id == 'global') return;
 
     state = state.where((p) => p.id != id).toList();
     await _service.setAppPanels(state);

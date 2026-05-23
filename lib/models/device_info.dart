@@ -38,7 +38,7 @@ class DeviceInfo {
     final adv = result.advertisementData;
     return DeviceInfo(
       device: result.device,
-      name: adv.localName.isNotEmpty ? adv.localName : 'Unknown Device',
+      name: adv.advName.isNotEmpty ? adv.advName : 'Unknown Device',
       address: result.device.remoteId.str,
       rssi: result.rssi,
       isPaired: false,
@@ -79,9 +79,9 @@ class DeviceInfo {
   String get signalIcon {
     final rssiValue = rssi;
     if (rssiValue == null) return '📡';
-    if (rssiValue > -50) return '📶';
-    if (rssiValue > -70) return '📶';
-    return '📶';
+    if (rssiValue > -50) return '🟢';
+    if (rssiValue > -70) return '🟡';
+    return '🔴';
   }
 
   @override

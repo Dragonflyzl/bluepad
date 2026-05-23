@@ -101,7 +101,7 @@ class BluetoothService {
     try {
       final result = await _channel.invokeMethod<bool>('disconnect');
       return result ?? false;
-    } on PlatformException catch (e) {
+    } on PlatformException {
       return false;
     }
   }
@@ -136,7 +136,7 @@ class BluetoothService {
         'hWheel': hWheel.clamp(-127, 127),
       });
       return result ?? false;
-    } on PlatformException catch (e) {
+    } on PlatformException {
       return false;
     }
   }
@@ -152,7 +152,7 @@ class BluetoothService {
         'keys': keys.take(6).toList(),
       });
       return result ?? false;
-    } on PlatformException catch (e) {
+    } on PlatformException {
       return false;
     }
   }
@@ -164,7 +164,7 @@ class BluetoothService {
         'mask': mask,
       });
       return result ?? false;
-    } on PlatformException catch (e) {
+    } on PlatformException {
       return false;
     }
   }
@@ -214,7 +214,7 @@ class BluetoothService {
         'hWheel': 0,
       });
       return result ?? false;
-    } on PlatformException catch (e) {
+    } on PlatformException {
       return false;
     }
   }

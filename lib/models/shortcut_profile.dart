@@ -85,11 +85,17 @@ class AppPanel {
         icon: '🌐',
         description: '网页浏览器',
       ),
+      AppPanel(
+        id: 'douyin',
+        name: '抖音',
+        icon: '🎵',
+        description: '抖音短视频',
+      ),
     ];
   }
 
   /// 检查是否为内置面板（不可删除）
-  bool get isBuiltIn => ['global', 'vscode', 'photoshop', 'browser'].contains(id);
+  bool get isBuiltIn => ['global', 'douyin', 'vscode', 'photoshop', 'browser'].contains(id);
 
   @override
   String toString() {

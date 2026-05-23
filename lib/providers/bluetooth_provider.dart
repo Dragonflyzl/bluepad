@@ -1,8 +1,5 @@
-/// 蓝牙状态管理 Provider
-/// 对应 Android: HidDevice + MainViewModel 中的蓝牙相关逻辑
-
 import 'dart:async';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide BluetoothService, ConnectionState;
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide BluetoothService;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/device_info.dart';
 import '../services/bluetooth_service.dart';
@@ -166,41 +163,40 @@ class BluetoothActions {
   BluetoothService get _service => _ref.read(bluetoothServiceProvider);
   FlutterBluePlusService get _fbsService => _ref.read(flutterBluePlusServiceProvider);
 
+  /// 扫描结果订阅，用于在 startScan 间管理生命周期防止泄漏
+  StreamSubscription? _scanSubscription;
+
   Future<bool> checkBluetooth() async => await _fbsService.checkPermissions();
 
   Future<void> startScan({int timeout = 15}) async {
+    // 取消旧订阅，防止重复监听泄漏
+    await _scanSubscription?.cancel();
+    _scanSubscription = null;
+
     _ref.read(discoveredDevicesProvider.notifier).clear();
     await _ref.read(pairedDevicesProvider.notifier).refresh();
     final pairedAddresses = _ref.read(pairedDevicesProvider).map((d) => d.address).toSet();
 
     await _fbsService.startScan(timeout: timeout);
-    _fbsService.scanResults.listen((devices) {
+    _scanSubscription = _fbsService.scanResults.listen((devices) {
       final filtered = devices.where((d) => !pairedAddresses.contains(d.address)).toList();
       _ref.read(discoveredDevicesProvider.notifier).setDevices(filtered);
     });
   }
 
   Future<void> stopScan() async {
+    await _scanSubscription?.cancel();
+    _scanSubscription = null;
     await _fbsService.stopScan();
   }
 
   Future<bool> connect(DeviceInfo device) async {
     _ref.read(connectionStateProvider.notifier).setConnecting();
-    
-    // 第一次尝试
-    bool requestSent = await _service.connect(device.address);
-    print("[FBP] Connection request sent (1st): $requestSent");
-    
-    if (!requestSent) {
-      // 可能是 Profile 正在初始化，等待 1 秒后最后重试一次
-      await Future.delayed(const Duration(milliseconds: 1000));
-      requestSent = await _service.connect(device.address);
-      print("[FBP] Connection request sent (2nd): $requestSent");
-    }
 
     final completer = Completer<bool>();
     StreamSubscription? subscription;
 
+    // 先在 connectionEvent 上注册监听，避免出现 race condition
     subscription = _service.connectionEvent.listen((event) {
       print("[FBP] Connection event: ${event.state} for ${event.address}");
       if (event.address == device.address) {
@@ -214,12 +210,23 @@ class BluetoothActions {
       }
     });
 
+    // 再发起连接请求
+    bool requestSent = await _service.connect(device.address);
+    print("[FBP] Connection request sent (1st): $requestSent");
+
+    if (!requestSent) {
+      // 可能是 Profile 正在初始化，等待 1 秒后最后重试一次
+      await Future.delayed(const Duration(milliseconds: 1000));
+      requestSent = await _service.connect(device.address);
+      print("[FBP] Connection request sent (2nd): $requestSent");
+    }
+
     try {
       final result = await completer.future.timeout(const Duration(seconds: 10));
       return result;
     } catch (e) {
       print("[FBP] Connection timeout or error: $e");
-      subscription?.cancel();
+      subscription.cancel();
       return false;
     }
   }
@@ -229,8 +236,7 @@ class BluetoothActions {
   // ==================== HID 报告发送 ====================
 
   void sendMouseMove(double dx, double dy, {int buttons = 0}) {
-    // 由 touchpad_area 的累加器保证传入的 dx/dy 已经经过 truncate 截断
-    // 此处直接强制转 int 即可，不再用 toInt() 避免 floor 精度丢失
+    // touchpad_area 的 dx/dy 已经是整数（accumulator 累加后 round 截断）
     _service.sendMouseReport(buttons: buttons, dx: dx.round(), dy: dy.round());
   }
 
