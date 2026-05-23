@@ -1,68 +1,83 @@
 # BluePad
 
-[![Flutter](https://img.shields.io/badge/Flutter-v3.11+-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
-[![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20macOS-blue)](https://github.com/Dragonflyzl/bluepad)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+<p align="center">
+  <img src="https://img.shields.io/badge/Flutter-v3.11+-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter">
+  <img src="https://img.shields.io/badge/Android-9.0+-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android">
+  <img src="https://img.shields.io/badge/Driverless-HID-orange?style=for-the-badge" alt="HID">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
+</p>
 
-**BluePad** 是一款基于 Flutter 构建的高性能蓝牙 HID 控制器。它可以将你的移动设备转变为电脑（Windows/macOS/Linux）的无线触控板、键盘、空中飞鼠和剪贴板同步器。
+**BluePad** 是一款基于 Flutter 构建的高性能蓝牙 HID (Human Interface Device) 控制套件。它通过 Android 原生蓝牙 HID 协议，将你的手机伪装成标准的蓝牙鼠标、键盘和多媒体控制器，实现对电脑（Windows/macOS/Linux）、平板甚至手机的控制。
 
-该项目是从原生 Kotlin (Android) 项目重写而来，保留并优化了核心 C++ 传感器算法，旨在提供极致的操控体验。
-
-## 🚀 核心功能
-
--   **智能触控板**
-    -   支持单指移动、点击、拖拽。
-    -   双指滚动（支持自然滚动/非自然滚动切换）。
-    -   双指缩放。
-    -   三指手势（轻点唤起搜索、轻扫切换桌面/任务）。
-    -   高精度惯性滚动算法。
--   **全功能键盘**
-    -   包含 QWERTY、数字、符号、Fn、导航键等多种布局。
-    -   **粘性修饰键**：支持锁定 Ctrl、Alt、Shift、Win/Cmd 进行组合键操作。
-    -   **智能模式切换**：根据连接设备（Mac/Windows）自动转换修饰键符号与逻辑。
--   **空中飞鼠 (Air Mouse)**
-    -   **姿态感应**：基于加速度计动态加权的陀螺仪角速度算法（完美移植自原生 C++ 核心）。
-    -   支持竖握、平放等多种姿态下的方向自动校正。
-    -   包含低速吸附死区与指数加速逻辑，兼顾微调精准度与大范围移动速度。
--   **全局剪贴板同步**
-    -   自动检测手机剪贴板并同步至电脑。
-    -   本地历史记录管理，支持快速搜索、复制与重新发送。
-    -   敏感内容过滤提示。
--   **个性化设置**
-    -   **UI 设计**：现代化的生产力级界面，支持深色/浅色模式切换。
-    -   **多语言**：完整支持中英文实时切换。
-    -   **性能微调**：可自定义触摸灵敏度、滚动速度、震动反馈等。
-
-## 🛠 技术架构
-
--   **前端框架**: [Flutter](https://flutter.dev) (Dart)
--   **状态管理**: [Riverpod](https://riverpod.dev)
--   **本地存储**: [Shared Preferences](https://pub.dev/packages/shared_preferences) & [sqflite](https://pub.dev/packages/sqflite)
--   **蓝牙通信**: [flutter_blue_plus](https://pub.dev/packages/flutter_blue_plus) & 自定义 MethodChannel (HID Profile)
--   **核心算法**: 传感器数据处理算法由原生 C++ 移植，确保在不同采样率下的平滑表现。
-
-## 📦 快速开始
-
-1.  **克隆仓库**
-    ```bash
-    git clone https://github.com/Dragonflyzl/bluepad.git
-    cd bluepad
-    ```
-2.  **安装依赖**
-    ```bash
-    flutter pub get
-    ```
-3.  **运行项目**
-    ```bash
-    # 确保已连接 Android 设备并开启了蓝牙权限
-    flutter run
-    ```
-
-## ⚠️ 注意事项
-
--   **HID 协议支持**：该应用利用了 Android 系统的 Bluetooth HID Device Profile。请确保你的 Android 系统版本在 9.0 (API 28) 或以上。
--   **配对**：在使用应用连接之前，请先在手机系统的蓝牙设置中与目标电脑完成配对。
+> **核心价值**：无需在受控端安装任何接收软件，即连即用，就像插入了一个真实的无线接收器。
 
 ---
 
-Developed with ❤️ by Dragonflyzl.
+## ✨ 核心功能
+
+### 🖱️ 智能触控板 (Touchpad)
+- **精准映射**：支持单指平滑移动、轻点点击、双指右键及拖拽操作。
+- **动态手势**：
+  - 双指自然滚动/传统滚动，支持动态灵敏度调节。
+  - 捏合缩放 (Pinch to Zoom)。
+
+### ⌨️ 效率键盘 (Keyboard)
+- **多布局支持**：标准 QWERTY、数字键盘、Fn 功能键区。
+- **修饰键锁定**：支持 Ctrl/Alt/Shift/Win 组合键长按操作。
+
+### 🪄 空中飞鼠 (Air Mouse)
+- **传感器融合**：利用陀螺仪与加速度计，结合姿态融合算法，实现空间指向控制。
+
+---
+
+## 📦 快速开始
+
+### 运行环境
+- Android 9.0 (API 28) 及以上版本（HID Profile 硬件支持）。
+- Flutter SDK v3.11.0+。
+
+### 安装步骤
+1. **克隆项目**
+   ```bash
+   git clone https://github.com/Dragonflyzl/bluepad.git
+   ```
+2. **安装依赖**
+   ```bash
+   flutter pub get
+   ```
+3. **原生配置**
+   确保 `android/app/src/main/AndroidManifest.xml` 中已声明蓝牙及前台服务权限。
+4. **编译运行**
+   ```bash
+   flutter run --release
+   ```
+
+---
+
+## 📖 项目结构
+
+```text
+lib/
+├── models/         # 领域模型与不可变数据类
+├── providers/      # Riverpod 状态管理逻辑
+├── screens/        # 视图层 (UI 页面)
+├── services/       # 业务服务 (蓝牙/剪贴板/数据库)
+├── theme/          # 全局主题配置
+├── utils/          # HID 键码映射与算法工具
+└── widgets/        # 可复用自定义组件
+```
+
+---
+
+## ⚠️ 使用建议
+
+1. **首次配对**：请先在手机系统的“蓝牙设置”中与目标电脑完成配对，随后在 App 内选择该设备连接。
+2. **权限授予**：App 需要“附近设备”、“位置信息”及“前台服务”权限以确保连接稳定。
+
+---
+
+## 📄 开源协议
+本项目采用 [MIT License](LICENSE) 开源。
+
+---
+<p align="center">Made with ❤️ by AI & Human</p>

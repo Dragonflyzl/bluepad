@@ -4,8 +4,6 @@ import '../models/shortcut_key.dart';
 import '../models/shortcut_profile.dart';
 import '../providers/bluetooth_provider.dart';
 import '../providers/shortcut_provider.dart';
-import '../providers/settings_provider.dart';
-import '../widgets/connection_bar.dart';
 import '../widgets/shortcut_edit_dialog.dart';
 import '../theme/app_colors.dart';
 import '../utils/l10n_utils.dart';
@@ -87,7 +85,7 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
               Text(
                 '${shortcuts.length} ${context.s('sc_items')}',
                 style: TextStyle(
-                  color: onSurfaceVariant.withOpacity(0.6),
+          color: onSurfaceVariant.withValues(alpha: 0.6),
                   fontSize: 10,
                 ),
               ),
@@ -182,11 +180,11 @@ class _ShortcutsScreenState extends ConsumerState<ShortcutsScreen> with SingleTi
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.keyboard, size: 48, color: textColor.withOpacity(0.3)),
+          Icon(Icons.keyboard, size: 48, color: textColor.withValues(alpha: 0.3)),
           const SizedBox(height: 12),
           Text(
             context.s('sc_no_shortcuts'),
-            style: TextStyle(color: textColor.withOpacity(0.5)),
+            style: TextStyle(color: textColor.withValues(alpha: 0.5)),
           ),
         ],
       ),
@@ -500,7 +498,7 @@ class _ShortcutGridItemState extends State<_ShortcutGridItem> {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: _isPressed ? accentColor.withOpacity(0.1) : surfaceColor,
+          color: _isPressed ? accentColor.withValues(alpha: 0.1) : surfaceColor,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: _isPressed ? accentColor : (isDark ? DarkColors.border : LightColors.border)),
         ),
@@ -574,9 +572,9 @@ class _MediaButton extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: purpleColor.withOpacity(0.1),
+                color: purpleColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: purpleColor.withOpacity(0.25)),
+                border: Border.all(color: purpleColor.withValues(alpha: 0.25)),
               ),
               child: Icon(icon, size: 16, color: purpleColor),
             ),
