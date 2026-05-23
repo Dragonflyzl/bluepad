@@ -6,6 +6,7 @@ import 'theme/app_theme.dart';
 import 'providers/settings_provider.dart';
 import 'services/settings_service.dart';
 import 'services/bluetooth_service.dart';
+import 'services/flutter_blue_plus_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,10 @@ void main() async {
   // 2. 初始化蓝牙 HID 服务
   final bluetoothService = BluetoothService();
   await bluetoothService.initialize();
+
+  // 3. 启动时预请求蓝牙权限（仅一次，系统会记住）
+  // 使后续扫描不再重复弹出权限授权提示
+  FlutterBluePlusService().requestPermissionsOnce();
   
   runApp(
     const ProviderScope(

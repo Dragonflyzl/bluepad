@@ -34,20 +34,44 @@ class FlutterBluePlusService {
   /// 是否正在扫描
   bool get isCurrentlyScanning => FlutterBluePlus.isScanningNow;
 
-  /// 检查蓝牙权限
+  /// 检查蓝牙是否可用（适配器状态 + 是否支持）
   Future<bool> checkPermissions() async {
-    // 检查蓝牙是否可用
     if (await FlutterBluePlus.isSupported == false) {
       return false;
     }
 
-    // 获取适配器状态
     final adapterState = await FlutterBluePlus.adapterState.first;
     if (adapterState != BluetoothAdapterState.on) {
       return false;
     }
 
     return true;
+  }
+
+  /// 启动时预请求蓝牙权限（仅一次，系统会记住授权状态）
+  /// Android 12+ 需要 BLUETOOTH_SCAN + BLUETOOTH_CONNECT 运行时权限
+  /// 通过一次短暂扫描触发系统权限弹窗，用户授权后不再重复提示
+  Future<bool> requestPermissionsOnce() async {
+    try {
+      // 先检查蓝牙适配器状态，如果关闭则请求开启
+      final adapterState = await FlutterBluePlus.adapterState.first;
+      if (adapterState != BluetoothAdapterState.on) {
+        await FlutterBluePlus.turnOn();
+      }
+
+      // 执行一次短暂扫描以触发 Android 运行时权限弹窗
+      // 用户点击"允许"后系统会记住，后续不会再弹出
+      await FlutterBluePlus.startScan(
+        timeout: const Duration(seconds: 1),
+        androidUsesFineLocation: true,
+      );
+      await Future.delayed(const Duration(milliseconds: 500));
+      await FlutterBluePlus.stopScan();
+      return true;
+    } catch (e) {
+      print("Permission request error: $e");
+      return false;
+    }
   }
 
   /// 开始扫描蓝牙设备
